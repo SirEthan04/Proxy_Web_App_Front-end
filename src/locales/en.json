@@ -157,5 +157,21 @@
   "productCreated": "Product created successfully.",
   "productUpdated": "Product updated successfully.",
   "productDeleted": "Product deleted successfully.",
-  "noReportData": "There are no records for this report."
+  "noReportData": "There are no records for this report.",
+  "accessDeniedTitle": "Access denied",
+  "accessDeniedMessage": "Your account does not have permission to perform this action.",
+  "backToDashboard": "Back to home",
+  "invalidProductPrice": "Price must be a number greater than or equal to zero.",
+  "invalidProductStock": "Quantity must be a number greater than or equal to zero.",
+  "invalidProductDate": "Enter a valid expiration date.",
+  "deleteProductTitle": "Delete product",
+  "deleteProductConfirmation": "Delete \"{name}\"? This is only allowed if there are no movements or waste records. This action cannot be undone.",
+  "productHasHistory": "Cannot delete: this product has movements or waste records. Its history must be preserved.",
+  "productHistoryCheckFailed": "History could not be verified. The product was not deleted. Check JSON Server and try again.",
+  "stockReadOnlyHint": "Stock is updated through movements and waste records. It cannot be changed in this form.",
+  "employeeDashboardSubtitle": "Access your daily tasks.",
+  "quickActions": "Quick actions",
+  "consultProducts": "View products",
+  "registerMovement": "Register entry or exit",
+  "consultAlerts": "View alerts"
 }

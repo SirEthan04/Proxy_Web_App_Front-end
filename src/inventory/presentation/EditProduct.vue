@@ -1,6 +1,6 @@
 <script setup>
-import { t } from '../../i18n.js'
-import { ref, computed, onMounted } from 'vue'
+import { t, translateValue } from '../../i18n.js'
+import { ref, computed, watch } from 'vue'
 import Button from 'primevue/button'
 import { useToast } from 'primevue/usetoast'
 import Sidebar from '../../shared/presentation/components/Sidebar.vue'
@@ -8,7 +8,7 @@ import Header from '../../shared/presentation/components/Header.vue'
 import InputText from 'primevue/inputtext'
 import { useRoute, useRouter } from 'vue-router'
 import { useProductsStore } from '../application/products.js'
-import { getProductStatus } from '../domain/product.js'
+import { PRODUCT_CATEGORIES, getProductValidationError } from '../domain/product-validation.js'
 
 const router = useRouter()
 const route = useRoute()
@@ -27,15 +27,17 @@ const stock = ref('')
 const expirationDate = ref('')
 const busy = computed(() => productsStore.saving)
 
-const id = Number(route.params.id)
+const id = computed(() => String(route.params.id))
 const loaded = ref(false)
 const missing = ref(false)
 const loadData = async () => {
+  const requestedId = id.value
   loaded.value = false
   missing.value = false
   try {
     await productsStore.loadProducts()
-    const product = productsStore.products.find(product => Number(product.id) === id)
+    if (requestedId !== id.value) return
+    const product = productsStore.products.find(product => String(product.id) === requestedId)
     if (!product) { missing.value = true; return }
     name.value = product.name
     category.value = product.category
@@ -45,16 +47,15 @@ const loadData = async () => {
     loaded.value = true
   } catch { /* The load error is shown with a manual retry. */ }
 }
-onMounted(loadData)
+watch(id, loadData, { immediate: true })
 
 const updateProduct = async () => {
   if (busy.value || !loaded.value) return
-  if (!name.value || !category.value || price.value === '' || stock.value === '' || !expirationDate.value) { notify('error', 'requiredFields'); return }
+  const details = { name: name.value, category: category.value, price: price.value, expirationDate: expirationDate.value }
+  const validationError = getProductValidationError(details, { includeStock: false })
+  if (validationError) { notify('error', validationError); return }
   try {
-    await productsStore.updateProduct(id,{
-      name: name.value, category: category.value, price: Number(price.value), stock: Number(stock.value),
-      expirationDate: expirationDate.value, status: getProductStatus(Number(stock.value))
-    })
+    await productsStore.updateProductDetails(id.value, details)
     notify('success', 'productUpdated')
     await router.push('/products')
   } catch (error) { notify('error', error.messageKey || productsStore.error || 'updateProductFailed') }
@@ -89,47 +90,20 @@ const updateProduct = async () => {
 
           <label>{{ t('category') }}</label>
           <select v-model="category" :disabled="busy">
-            <option value="Bebidas">
-              {{ t('beverages') }}
-            </option>
-
-            <option value="Lácteos">
-              {{ t('dairy') }}
-            </option>
-
-            <option value="Panadería">
-              {{ t('bakery') }}
-            </option>
-
-            <option value="Abarrotes">
-              {{ t('groceries') }}
-            </option>
-
-            <option value="Galletas">
-              {{ t('cookies') }}
-            </option>
-
-            <option value="Conservas">
-              {{ t('cannedGoods') }}
-            </option>
-
-            <option value="Dulces">
-              {{ t('sweets') }}
-            </option>
+            <option v-if="category && !PRODUCT_CATEGORIES.includes(category)" :value="category">{{ translateValue(category) }}</option>
+            <option v-for="item in PRODUCT_CATEGORIES" :key="item" :value="item">{{ translateValue(item) }}</option>
           </select>
 
           <label>{{ t('price') }}</label>
           <input :disabled="busy"
               v-model="price"
-              type="number"
-              step="0.01"
+              type="number" min="0"
+              step="any"
           >
 
           <label>{{ t('stock') }}</label>
-          <input :disabled="busy"
-              v-model="stock"
-              type="number"
-          >
+          <input :value="stock" type="number" readonly :aria-label="t('stock')">
+          <small>{{ t('stockReadOnlyHint') }}</small>
 
           <label>{{ t('expirationDate') }}</label>
           <input :disabled="busy"

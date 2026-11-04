@@ -1,4 +1,6 @@
 <script setup>
+import { useAuthStore } from '../../iam/application/auth.js'
+import { PERMISSIONS } from '../../iam/domain/permissions.js'
 import Button from 'primevue/button'
 import { t } from '../../i18n.js'
 
@@ -15,15 +17,19 @@ import {
   getTotalOperations,
   getTotalWastes
 } from '../application/reports.js'
+const auth = useAuthStore()
+const isAdministrative = computed(() => auth.can(PERMISSIONS.REPORTS_READ))
 const productsStore = useProductsStore()
 const operationsStore = useOperationsStore()
 const wasteStore = useWasteStore()
 
-const loading = computed(() => productsStore.loading || operationsStore.loading || wasteStore.loading)
-const loadError = computed(() => productsStore.loadError || operationsStore.loadError || wasteStore.loadError)
+const loading = computed(() => productsStore.loading || (isAdministrative.value && (operationsStore.loading || wasteStore.loading)))
+const loadError = computed(() => productsStore.loadError || (isAdministrative.value && (operationsStore.loadError || wasteStore.loadError)))
 const dataReady = computed(() => !loading.value && !loadError.value)
 const loadData = async () => {
-  await Promise.allSettled([productsStore.loadProducts(), operationsStore.loadOperations(), wasteStore.loadWastes()])
+  const requests = [productsStore.loadProducts()]
+  if (isAdministrative.value) requests.push(operationsStore.loadOperations(), wasteStore.loadWastes())
+  await Promise.allSettled(requests)
 }
 onMounted(loadData)
 
@@ -83,14 +89,14 @@ const totalWastes = computed(() => {
 
       <div class="content">
         <h1>{{ t('dashboardTitle') }}</h1>
-        <p>{{ t('dashboardSubtitle') }}</p>
+        <p>{{ t(isAdministrative ? 'dashboardSubtitle' : 'employeeDashboardSubtitle') }}</p>
         <p v-if="loading" role="status">{{ t('loadingData') }}</p>
         <div v-else-if="loadError" role="alert">
           <p>{{ t(loadError) }}</p><Button @click="loadData">{{ t('retry') }}</Button>
         </div>
         <template v-if="dataReady">
 
-        <div class="cards">
+        <div v-if="isAdministrative" class="cards">
 
           <div class="card">
             <h3>{{ t('totalProducts') }}</h3>
@@ -122,6 +128,15 @@ const totalWastes = computed(() => {
             <p>{{ totalWastes }}</p>
           </div>
 
+        </div>
+        <div v-else>
+          <h2>{{ t('quickActions') }}</h2>
+          <ul>
+            <li><router-link to="/products">{{ t('consultProducts') }}</router-link></li>
+            <li><router-link to="/operations">{{ t('registerMovement') }}</router-link></li>
+            <li><router-link to="/waste">{{ t('registerWaste') }}</router-link></li>
+            <li><router-link to="/alerts">{{ t('consultAlerts') }}</router-link></li>
+          </ul>
         </div>
         </template>
       </div>

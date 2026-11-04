@@ -1,5 +1,5 @@
 <script setup>
-import { t } from '../../i18n.js'
+import { t, translateValue } from '../../i18n.js'
 import { ref, computed } from 'vue'
 import Button from 'primevue/button'
 import { useToast } from 'primevue/usetoast'
@@ -8,7 +8,7 @@ import Header from '../../shared/presentation/components/Header.vue'
 import InputText from 'primevue/inputtext'
 import { useRouter } from 'vue-router'
 import { useProductsStore } from '../application/products.js'
-import { getProductStatus } from '../domain/product.js'
+import { PRODUCT_CATEGORIES, getProductValidationError } from '../domain/product-validation.js'
 
 const router = useRouter()
 const productsStore = useProductsStore()
@@ -28,12 +28,11 @@ const busy = computed(() => productsStore.saving)
 
 const saveProduct = async () => {
   if (busy.value) return
-  if (!name.value || !category.value || price.value === '' || stock.value === '' || !expirationDate.value) { notify('error', 'requiredFields'); return }
+  const product = { name: name.value, category: category.value, price: price.value, stock: stock.value, expirationDate: expirationDate.value }
+  const validationError = getProductValidationError(product)
+  if (validationError) { notify('error', validationError); return }
   try {
-    await productsStore.addProduct({
-      name: name.value, category: category.value, price: Number(price.value), stock: Number(stock.value),
-      expirationDate: expirationDate.value, status: getProductStatus(Number(stock.value))
-    })
+    await productsStore.addProduct(product)
     notify('success', 'productCreated')
     await router.push('/products')
   } catch (error) { notify('error', error.messageKey || productsStore.error || 'createProductFailed') }
@@ -60,21 +59,13 @@ const saveProduct = async () => {
           <label>{{ t('category') }}</label>
           <select v-model="category" :disabled="busy">
             <option value="">{{ t('selectCategory') }}</option>
-            <option value="Bebidas">{{ t('beverages') }}</option>
-            <option value="Lácteos">{{ t('dairy') }}</option>
-            <option value="Panadería">{{ t('bakery') }}</option>
-            <option value="Abarrotes">{{ t('groceries') }}</option>
-            <option value="Galletas">{{ t('cookies') }}</option>
-            <option value="Conservas">{{ t('cannedGoods') }}</option>
-            <option value="Dulces">{{ t('sweets') }}</option>
-            <option value="Limpieza">{{ t('cleaning') }}</option>
-            <option value="Snacks">{{ t('snacks') }}</option>
+            <option v-for="category in PRODUCT_CATEGORIES" :key="category" :value="category">{{ translateValue(category) }}</option>
           </select>
 
           <label>{{ t('price') }}</label>
           <input :disabled="busy"
               v-model="price"
-              type="number"
+              type="number" min="0" step="any"
               :placeholder="t('price')"
           >
 

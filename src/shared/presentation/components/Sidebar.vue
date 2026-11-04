@@ -1,4 +1,5 @@
 <script setup>
+import { PERMISSIONS } from '../../../iam/domain/permissions.js'
 import Button from 'primevue/button'
 import { t } from '../../../i18n.js'
 
@@ -34,30 +35,30 @@ const logout = () => {
     </div>
 
     <nav>
-      <router-link to="/dashboard">
+      <router-link v-if="authStore.can(PERMISSIONS.DASHBOARD_READ)" to="/dashboard">
         {{ t('dashboard') }}
       </router-link>
 
-      <router-link to="/products">
+      <router-link v-if="authStore.can(PERMISSIONS.PRODUCTS_READ)" to="/products">
         {{ t('inventory') }}
       </router-link>
 
-      <router-link to="/operations">
+      <router-link v-if="authStore.can(PERMISSIONS.OPERATIONS_WRITE)" to="/operations">
         {{ t('operations') }}
       </router-link>
 
-      <router-link to="/alerts">
+      <router-link v-if="authStore.can(PERMISSIONS.ALERTS_READ)" to="/alerts">
         {{ t('monitoring') }}
       </router-link>
 
-      <router-link to="/reports">
+      <router-link v-if="authStore.can(PERMISSIONS.REPORTS_READ)" to="/reports">
         {{ t('reporting') }}
       </router-link>
 
-      <router-link to="/waste">
+      <router-link v-if="authStore.can(PERMISSIONS.WASTE_WRITE)" to="/waste">
         {{ t('waste') }}
       </router-link>
-      <router-link to="/users">
+      <router-link v-if="authStore.can(PERMISSIONS.USERS_READ)" to="/users">
         {{ t('users') }}
       </router-link>
     </nav>

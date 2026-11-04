@@ -1,3 +1,5 @@
+import { PERMISSIONS } from '../iam/domain/permissions.js'
+import AccessDenied from '../iam/presentation/AccessDenied.vue'
 import { authenticationGuard } from '../iam/infrastructure/authentication-guard.js'
 import { createRouter, createWebHistory } from 'vue-router'
 
@@ -15,6 +17,7 @@ import Alerts from '../monitoring/presentation/Alerts.vue'
 import Reports from '../reporting/presentation/Reports.vue'
 
 const routes = [
+    { path: '/access-denied', component: AccessDenied, meta: { requiresAuth: true } },
     {
         path: '/',
         redirect: '/login'
@@ -26,49 +29,49 @@ const routes = [
     {
         path: '/dashboard',
         component: Dashboard,
-        meta: { requiresAuth: true }
+        meta: { requiresAuth: true, permission: PERMISSIONS.DASHBOARD_READ }
     },
 
     {
         path: '/products',
         component: Products,
-        meta: { requiresAuth: true }
+        meta: { requiresAuth: true, permission: PERMISSIONS.PRODUCTS_READ }
     },
     {
         path: '/products/new',
         component: NewProduct,
-        meta: { requiresAuth: true }
+        meta: { requiresAuth: true, permission: PERMISSIONS.PRODUCTS_CREATE }
     },
     {
         path: '/products/edit/:id',
         component: EditProduct,
-        meta: { requiresAuth: true }
+        meta: { requiresAuth: true, permission: PERMISSIONS.PRODUCTS_EDIT }
     },
 
     {
         path: '/operations',
         component: Operations,
-        meta: { requiresAuth: true }
+        meta: { requiresAuth: true, permission: PERMISSIONS.OPERATIONS_WRITE }
     },
     {
         path: '/alerts',
         component: Alerts,
-        meta: { requiresAuth: true }
+        meta: { requiresAuth: true, permission: PERMISSIONS.ALERTS_READ }
     },
     {
         path: '/reports',
         component: Reports,
-        meta: { requiresAuth: true }
+        meta: { requiresAuth: true, permission: PERMISSIONS.REPORTS_READ }
     },
     {
         path: '/waste',
         component: Waste,
-        meta: { requiresAuth: true }
+        meta: { requiresAuth: true, permission: PERMISSIONS.WASTE_WRITE }
     },
     {
         path: '/users',
         component: Users,
-        meta: { requiresAuth: true }
+        meta: { requiresAuth: true, permission: PERMISSIONS.USERS_READ }
     },
 
 ]

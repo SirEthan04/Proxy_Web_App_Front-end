@@ -1,12 +1,18 @@
+import { permissionsForRole } from '../domain/permissions.js'
 import { defineStore } from 'pinia'
 import { authenticateDemoUser, validateDemoSession } from '../infrastructure/auth-service.js'
 
 export const useAuthStore = defineStore('auth', {
   state: () => ({ user: null, initialized: false, error: null }),
   getters: {
-    isAuthenticated: state => state.user !== null
+    isAuthenticated: state => state.user !== null,
+    permissions: state => permissionsForRole(state.user?.role),
+    can() { return permission => this.isAuthenticated && this.permissions.includes(permission) }
   },
   actions: {
+    requirePermission(permission) {
+      if (!this.can(permission)) throw Object.assign(new Error('Access denied'), { messageKey: 'accessDeniedMessage' })
+    },
     loadUser() {
       this.user = null
       this.error = null

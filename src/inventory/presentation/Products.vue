@@ -13,7 +13,7 @@
           </div>
 
           <Button
-              class="new-btn"
+              class="new-btn" v-if="auth.can(PERMISSIONS.PRODUCTS_CREATE)"
               @click="$router.push('/products/new')"
           >
             {{ t('addProduct') }}
@@ -28,15 +28,7 @@
 
           <select v-model="selectedCategory">
             <option value="Todas">{{ t('allCategories') }}</option>
-            <option value="Bebidas">{{ t('beverages') }}</option>
-            <option value="Lácteos">{{ t('dairy') }}</option>
-            <option value="Panadería">{{ t('bakery') }}</option>
-            <option value="Abarrotes">{{ t('groceries') }}</option>
-            <option value="Galletas">{{ t('cookies') }}</option>
-            <option value="Conservas">{{ t('cannedGoods') }}</option>
-            <option value="Dulces">{{ t('sweets') }}</option>
-            <option value="Limpieza">{{ t('cleaning') }}</option>
-            <option value="Snacks">{{ t('snacks') }}</option>
+            <option v-for="category in PRODUCT_CATEGORIES" :key="category" :value="category">{{ translateValue(category) }}</option>
           </select>
         </div>
 
@@ -53,7 +45,7 @@
             <th>{{ t('price') }}</th>
             <th>{{ t('stock') }}</th>
             <th>{{ t('status') }}</th>
-            <th>{{ t('actions') }}</th>
+            <th v-if="auth.can(PERMISSIONS.PRODUCTS_EDIT) || auth.can(PERMISSIONS.PRODUCTS_DELETE)">{{ t('actions') }}</th>
           </tr>
           </thead>
 
@@ -69,17 +61,17 @@
             <td>{{ product.stock }}</td>
             <td>{{ translateValue(product.status) }}</td>
 
-            <td>
+            <td v-if="auth.can(PERMISSIONS.PRODUCTS_EDIT) || auth.can(PERMISSIONS.PRODUCTS_DELETE)">
               <Button
-                  class="edit-btn"
+                  class="edit-btn" v-if="auth.can(PERMISSIONS.PRODUCTS_EDIT)"
                   @click="$router.push(`/products/edit/${product.id}`)"
               >
                 {{ t('edit') }}
               </Button>
 
               <Button
-                  class="delete-btn"
-                  @click="deleteProduct(product.id)" :disabled="productsStore.saving"
+                  class="delete-btn" v-if="auth.can(PERMISSIONS.PRODUCTS_DELETE)"
+                  @click="confirmDeleteProduct(product)" :disabled="productsStore.saving || confirmingDelete"
               >
                 {{ t('delete') }}
               </Button>
@@ -99,6 +91,10 @@
 </template>
 
 <script setup>
+import { useConfirm } from 'primevue/useconfirm'
+import { useAuthStore } from '../../iam/application/auth.js'
+import { PERMISSIONS } from '../../iam/domain/permissions.js'
+import { PRODUCT_CATEGORIES } from '../domain/product-validation.js'
 import Button from 'primevue/button'
 import InputText from 'primevue/inputtext'
 import { t, translateValue } from '../../i18n.js'
@@ -111,6 +107,9 @@ import Header from '../../shared/presentation/components/Header.vue'
 import { useProductsStore } from '../application/products.js'
 
 const productsStore = useProductsStore()
+const auth = useAuthStore()
+const confirm = useConfirm()
+const confirmingDelete = ref(false)
 
 const search = ref('')
 const selectedCategory = ref('Todas')
@@ -144,10 +143,27 @@ const loadData = async () => {
   await Promise.allSettled([productsStore.loadProducts()])
 }
 onMounted(loadData)
-const deleteProduct = async id => {
-  if (productsStore.saving) return
-  try { await productsStore.deleteProduct(id); notify('success', 'productDeleted') }
-  catch (error) { notify('error', error.messageKey || productsStore.error || 'deleteProductFailed') }
+const confirmDeleteProduct = product => {
+  if (productsStore.saving || confirmingDelete.value || !auth.can(PERMISSIONS.PRODUCTS_DELETE)) return
+  const id = product.id
+  confirmingDelete.value = true
+  confirm.require({
+    header: t('deleteProductTitle'),
+    message: t('deleteProductConfirmation', { name: product.name }),
+    acceptLabel: t('delete'),
+    rejectLabel: t('cancel'),
+    defaultFocus: 'reject',
+    accept: async () => {
+      try {
+        await productsStore.deleteProduct(id)
+        notify('success', 'productDeleted')
+      } catch (error) {
+        notify('error', error.messageKey || productsStore.error || 'deleteProductFailed')
+      } finally { confirmingDelete.value = false }
+    },
+    reject: () => { confirmingDelete.value = false },
+    onHide: () => { confirmingDelete.value = false }
+  })
 }
 </script>
 

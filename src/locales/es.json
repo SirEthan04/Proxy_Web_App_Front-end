@@ -157,5 +157,21 @@
   "productCreated": "Producto creado correctamente.",
   "productUpdated": "Producto actualizado correctamente.",
   "productDeleted": "Producto eliminado correctamente.",
-  "noReportData": "No hay registros para este reporte."
+  "noReportData": "No hay registros para este reporte.",
+  "accessDeniedTitle": "Acceso denegado",
+  "accessDeniedMessage": "Tu cuenta no tiene permiso para realizar esta acción.",
+  "backToDashboard": "Volver al inicio",
+  "invalidProductPrice": "El precio debe ser un número igual o mayor que cero.",
+  "invalidProductStock": "La cantidad debe ser un número igual o mayor que cero.",
+  "invalidProductDate": "Ingresa una fecha de vencimiento válida.",
+  "deleteProductTitle": "Eliminar producto",
+  "deleteProductConfirmation": "¿Eliminar \"{name}\"? Solo se permitirá si no tiene movimientos ni mermas. Esta acción no se puede deshacer.",
+  "productHasHistory": "No se puede eliminar: el producto tiene movimientos o mermas. Debe conservarse su historial.",
+  "productHistoryCheckFailed": "No se pudo verificar el historial. No se eliminó el producto. Comprueba JSON Server e inténtalo de nuevo.",
+  "stockReadOnlyHint": "El stock se actualiza mediante movimientos y mermas. No se modifica desde este formulario.",
+  "employeeDashboardSubtitle": "Accede a las tareas de tu jornada.",
+  "quickActions": "Acciones rápidas",
+  "consultProducts": "Consultar productos",
+  "registerMovement": "Registrar entrada o salida",
+  "consultAlerts": "Consultar alertas"
 }
