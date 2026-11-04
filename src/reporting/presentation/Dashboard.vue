@@ -1,4 +1,12 @@
 <script setup>
+import { useRouter } from 'vue-router'
+import AppLayout from '../../shared/presentation/layouts/AppLayout.vue'
+import PageHeader from '../../shared/presentation/components/PageHeader.vue'
+import StatCard from '../../shared/presentation/components/StatCard.vue'
+import RequestState from '../../shared/presentation/components/RequestState.vue'
+import NavIcon from '../../shared/presentation/components/NavIcon.vue'
+import { translateValue } from '../../i18n.js'
+
 import { useAuthStore } from '../../iam/application/auth.js'
 import { PERMISSIONS } from '../../iam/domain/permissions.js'
 import Button from 'primevue/button'
@@ -6,8 +14,6 @@ import { t } from '../../i18n.js'
 
 import { computed, onMounted } from 'vue'
 
-import Sidebar from '../../shared/presentation/components/Sidebar.vue'
-import Header from '../../shared/presentation/components/Header.vue'
 
 import { useProductsStore } from '../../inventory/application/products.js'
 import { useOperationsStore } from '../../operations/application/operations.js'
@@ -78,127 +84,52 @@ const totalOperations = computed(() => {
 const totalWastes = computed(() => {
   return getTotalWastes(wasteStore.wastes)
 })
+
+const router = useRouter()
+const recentOperations = computed(() => operationsStore.operations.slice(-5).reverse())
+const quickActions = computed(() => (isAdministrative.value ? [
+  { to: '/products/new', label: 'newProduct', icon: 'plus', permission: PERMISSIONS.PRODUCTS_CREATE },
+  { to: '/products', label: 'consultProducts', icon: 'box', permission: PERMISSIONS.PRODUCTS_READ },
+  { to: '/operations', label: 'registerMovement', icon: 'movement', permission: PERMISSIONS.OPERATIONS_WRITE },
+  { to: '/waste', label: 'registerWaste', icon: 'waste', permission: PERMISSIONS.WASTE_WRITE }
+] : [
+  { to: '/products', label: 'consultProducts', icon: 'box', permission: PERMISSIONS.PRODUCTS_READ },
+  { to: '/operations', label: 'registerMovement', icon: 'movement', permission: PERMISSIONS.OPERATIONS_WRITE },
+  { to: '/waste', label: 'registerWaste', icon: 'waste', permission: PERMISSIONS.WASTE_WRITE },
+  { to: '/alerts', label: 'consultAlerts', icon: 'alert', permission: PERMISSIONS.ALERTS_READ }
+]).filter(action => auth.can(action.permission)))
 </script>
-
 <template>
-  <div class="page">
-    <Sidebar />
-
-    <main class="main-content">
-      <Header />
-
-      <div class="content">
-        <h1>{{ t('dashboardTitle') }}</h1>
-        <p>{{ t(isAdministrative ? 'dashboardSubtitle' : 'employeeDashboardSubtitle') }}</p>
-        <p v-if="loading" role="status">{{ t('loadingData') }}</p>
-        <div v-else-if="loadError" role="alert">
-          <p>{{ t(loadError) }}</p><Button @click="loadData">{{ t('retry') }}</Button>
-        </div>
-        <template v-if="dataReady">
-
-        <div v-if="isAdministrative" class="cards">
-
-          <div class="card">
-            <h3>{{ t('totalProducts') }}</h3>
-            <p>{{ totalProducts }}</p>
-          </div>
-
-          <div class="card warning">
-            <h3>{{ t('lowStock') }}</h3>
-            <p>{{ lowStockProducts }}</p>
-          </div>
-
-          <div class="card danger">
-            <h3>{{ t('outOfStock') }}</h3>
-            <p>{{ outOfStockProducts }}</p>
-          </div>
-
-          <div class="card orange">
-            <h3>{{ t('expiringSoon') }}</h3>
-            <p>{{ expiringProducts }}</p>
-          </div>
-
-          <div class="card operations">
-            <h3>{{ t('operations') }}</h3>
-            <p>{{ totalOperations }}</p>
-          </div>
-
-          <div class="card waste">
-            <h3>{{ t('waste') }}</h3>
-            <p>{{ totalWastes }}</p>
-          </div>
-
-        </div>
-        <div v-else>
-          <h2>{{ t('quickActions') }}</h2>
-          <ul>
-            <li><router-link to="/products">{{ t('consultProducts') }}</router-link></li>
-            <li><router-link to="/operations">{{ t('registerMovement') }}</router-link></li>
-            <li><router-link to="/waste">{{ t('registerWaste') }}</router-link></li>
-            <li><router-link to="/alerts">{{ t('consultAlerts') }}</router-link></li>
-          </ul>
-        </div>
-        </template>
+  <AppLayout><div class="content">
+    <PageHeader :title="t(isAdministrative ? 'storeOverview' : 'dailyWorkspace')" :description="t(isAdministrative ? 'dashboardSubtitle' : 'employeeDashboardSubtitle')">
+      <template v-if="auth.can(PERMISSIONS.PRODUCTS_CREATE)" #actions><Button class="new-btn" @click="router.push('/products/new')"><NavIcon name="plus" />{{ t('newProduct') }}</Button></template>
+    </PageHeader>
+    <RequestState :loading="loading" :error="loadError" @retry="loadData" />
+    <template v-if="dataReady">
+      <div v-if="isAdministrative" class="stats-grid">
+        <StatCard :label="t('totalProducts')" :value="totalProducts" icon="box" tone="success" />
+        <StatCard :label="t('lowStock')" :value="lowStockProducts" icon="alert" tone="warning" />
+        <StatCard :label="t('expiringSoon')" :value="expiringProducts" icon="clock" tone="warning" />
+        <StatCard :label="t('outOfStock')" :value="outOfStockProducts" icon="box" tone="danger" />
       </div>
-    </main>
-  </div>
+      <section class="panel quick-panel">
+        <div class="section-heading"><div><h2>{{ t('quickActions') }}</h2><p>{{ t('quickActionsHint') }}</p></div></div>
+        <div class="quick-actions"><router-link v-for="action in quickActions" :key="action.to" :to="action.to" class="quick-action"><NavIcon :name="action.icon" /><span>{{ t(action.label) }}</span></router-link></div>
+      </section>
+      <div :class="{ 'dashboard-columns': isAdministrative }">
+        <section v-if="isAdministrative" class="panel">
+          <div class="section-heading"><div><h2>{{ t('recentMovements') }}</h2><p>{{ t('lastRegisteredMovements') }}</p></div><router-link class="section-link" to="/operations">{{ t('viewAll') }}</router-link></div>
+          <p class="table-hint">{{ t('tableScrollHint') }}</p><div class="table-scroll" role="region" :aria-label="t('recentMovements')" tabindex="0">
+            <table><thead><tr><th>{{ t('product') }}</th><th>{{ t('type') }}</th><th>{{ t('quantity') }}</th><th>{{ t('date') }}</th></tr></thead><tbody><tr v-for="operation in recentOperations" :key="operation.id"><td>{{ operation.productName }}</td><td><span class="status-pill">{{ translateValue(operation.type) }}</span></td><td>{{ operation.quantity }}</td><td>{{ operation.date }}</td></tr><tr v-if="recentOperations.length === 0"><td colspan="4" class="empty">{{ t('noOperations') }}</td></tr></tbody></table>
+          </div>
+        </section>
+        <section class="panel">
+          <div class="section-heading"><div><h2>{{ t('importantAlerts') }}</h2><p>{{ t('alertsNeedAttention') }}</p></div><router-link class="section-link" to="/alerts">{{ t('viewAll') }}</router-link></div>
+          <div class="alert-summary"><span><NavIcon name="alert" />{{ t('lowStock') }}</span><strong class="count-badge">{{ lowStockProducts }}</strong></div>
+          <div class="alert-summary"><span><NavIcon name="clock" />{{ t('expiringSoon') }}</span><strong class="count-badge">{{ expiringProducts }}</strong></div>
+          <div class="alert-summary"><span><NavIcon name="box" />{{ t('outOfStock') }}</span><strong class="count-badge">{{ outOfStockProducts }}</strong></div>
+        </section>
+      </div>
+    </template>
+  </div></AppLayout>
 </template>
-
-<style scoped>
-.page {
-  display: flex;
-}
-
-.main-content {
-  flex: 1;
-}
-
-.content {
-  padding: 30px;
-}
-
-.cards {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 20px;
-  margin-top: 25px;
-}
-
-.card {
-  background-color: #2563eb;
-  color: white;
-  padding: 25px;
-  border-radius: 8px;
-}
-
-.card h3 {
-  margin: 0;
-  font-size: 18px;
-}
-
-.card p {
-  font-size: 32px;
-  font-weight: bold;
-  margin: 10px 0 0;
-}
-
-.warning {
-  background-color: #eab308;
-}
-
-.danger {
-  background-color: #dc2626;
-}
-
-.orange {
-  background-color: #f97316;
-}
-
-.operations {
-  background-color: #16a34a;
-}
-
-.waste {
-  background-color: #7c3aed;
-}
-</style>

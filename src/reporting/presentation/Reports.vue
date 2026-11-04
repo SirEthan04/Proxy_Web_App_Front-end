@@ -1,11 +1,13 @@
 <script setup>
+import AppLayout from '../../shared/presentation/layouts/AppLayout.vue'
+import PageHeader from '../../shared/presentation/components/PageHeader.vue'
+import RequestState from '../../shared/presentation/components/RequestState.vue'
+
 import Button from 'primevue/button'
 import { t, translateValue } from '../../i18n.js'
 
 import { computed, onMounted, ref } from 'vue'
 
-import Sidebar from '../../shared/presentation/components/Sidebar.vue'
-import Header from '../../shared/presentation/components/Header.vue'
 import {
   getEntries,
   getExits
@@ -38,197 +40,135 @@ const exits = computed(() => {
 </script>
 
 <template>
-  <div class="page">
-    <Sidebar />
-
-    <main class="main-content">
-      <Header />
-
-      <div class="content">
-        <h1>{{ t('reporting') }}</h1>
-        <p>{{ t('reportsSubtitle') }}</p>
-        <p v-if="loading" role="status">{{ t('loadingData') }}</p>
-        <div v-else-if="loadError" role="alert">
-          <p>{{ t(loadError) }}</p><Button @click="loadData">{{ t('retry') }}</Button>
-        </div>
-        <template v-if="dataReady">
-
+  <AppLayout>
+    <div class="content">
+      <PageHeader :title="t('reporting')" :description="t('reportsSubtitle')" />
+      <RequestState :loading="loading" :error="loadError" @retry="loadData" />
+      <template v-if="dataReady">
         <div class="report-selector">
-          <label>{{ t('reportType') }}</label>
-
-          <select v-model="selectedReport">
+          <label for="report-type">{{ t('reportType') }}</label>
+          <select id="report-type" v-model="selectedReport">
             <option value="Inventario">{{ t('inventory') }}</option>
             <option value="Entradas">{{ t('entries') }}</option>
             <option value="Salidas">{{ t('exits') }}</option>
             <option value="Mermas">{{ t('waste') }}</option>
           </select>
         </div>
-
         <div v-if="selectedReport === 'Inventario'">
           <h2>{{ t('inventoryReport') }}</h2>
-
-          <table>
-            <thead>
-            <tr>
-              <th>{{ t('id') }}</th>
-              <th>{{ t('product') }}</th>
-              <th>{{ t('category') }}</th>
-              <th>{{ t('stock') }}</th>
-              <th>{{ t('price') }}</th>
-              <th>{{ t('status') }}</th>
-            </tr>
-            </thead>
-
-            <tbody>
-            <tr
-                v-for="product in productsStore.products"
-                :key="product.id"
-            >
-              <td>{{ product.id }}</td>
-              <td>{{ product.name }}</td>
-              <td>{{ translateValue(product.category) }}</td>
-              <td>{{ product.stock }}</td>
-              <td>S/ {{ product.price }}</td>
-              <td>{{ translateValue(product.status) }}</td>
-            </tr>
-            <tr v-if="productsStore.products.length === 0"><td colspan="6">{{ t('noReportData') }}</td></tr>
-            </tbody>
-          </table>
+          <p class="table-hint">{{ t('tableScrollHint') }}</p>
+          <div class="table-scroll" role="region" :aria-label="t('tableScrollHint')" tabindex="0">
+            <table>
+              <thead>
+                <tr>
+                  <th>{{ t('id') }}</th>
+                  <th>{{ t('product') }}</th>
+                  <th>{{ t('category') }}</th>
+                  <th>{{ t('stock') }}</th>
+                  <th>{{ t('price') }}</th>
+                  <th>{{ t('status') }}</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="product in productsStore.products" :key="product.id">
+                  <td>{{ product.id }}</td>
+                  <td>{{ product.name }}</td>
+                  <td>{{ translateValue(product.category) }}</td>
+                  <td>{{ product.stock }}</td>
+                  <td>S/ {{ product.price }}</td>
+                  <td>{{ translateValue(product.status) }}</td>
+                </tr>
+                <tr v-if="productsStore.products.length === 0">
+                  <td colspan="6">{{ t('noReportData') }}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
         </div>
-
         <div v-if="selectedReport === 'Entradas'">
           <h2>{{ t('entriesReport') }}</h2>
-
-          <table>
-            <thead>
-            <tr>
-              <th>{{ t('id') }}</th>
-              <th>{{ t('product') }}</th>
-              <th>{{ t('quantity') }}</th>
-              <th>{{ t('date') }}</th>
-            </tr>
-            </thead>
-
-            <tbody>
-            <tr
-                v-for="operation in entries"
-                :key="operation.id"
-            >
-              <td>{{ operation.id }}</td>
-              <td>{{ operation.productName }}</td>
-              <td>{{ operation.quantity }}</td>
-              <td>{{ operation.date }}</td>
-            </tr>
-            <tr v-if="entries.length === 0"><td colspan="4">{{ t('noReportData') }}</td></tr>
-            </tbody>
-          </table>
+          <p class="table-hint">{{ t('tableScrollHint') }}</p>
+          <div class="table-scroll" role="region" :aria-label="t('tableScrollHint')" tabindex="0">
+            <table>
+              <thead>
+                <tr>
+                  <th>{{ t('id') }}</th>
+                  <th>{{ t('product') }}</th>
+                  <th>{{ t('quantity') }}</th>
+                  <th>{{ t('date') }}</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="operation in entries" :key="operation.id">
+                  <td>{{ operation.id }}</td>
+                  <td>{{ operation.productName }}</td>
+                  <td>{{ operation.quantity }}</td>
+                  <td>{{ operation.date }}</td>
+                </tr>
+                <tr v-if="entries.length === 0">
+                  <td colspan="4">{{ t('noReportData') }}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
         </div>
-
         <div v-if="selectedReport === 'Salidas'">
           <h2>{{ t('exitsReport') }}</h2>
-
-          <table>
-            <thead>
-            <tr>
-              <th>{{ t('id') }}</th>
-              <th>{{ t('product') }}</th>
-              <th>{{ t('quantity') }}</th>
-              <th>{{ t('date') }}</th>
-            </tr>
-            </thead>
-
-            <tbody>
-            <tr
-                v-for="operation in exits"
-                :key="operation.id"
-            >
-              <td>{{ operation.id }}</td>
-              <td>{{ operation.productName }}</td>
-              <td>{{ operation.quantity }}</td>
-              <td>{{ operation.date }}</td>
-            </tr>
-            <tr v-if="exits.length === 0"><td colspan="4">{{ t('noReportData') }}</td></tr>
-            </tbody>
-          </table>
+          <p class="table-hint">{{ t('tableScrollHint') }}</p>
+          <div class="table-scroll" role="region" :aria-label="t('tableScrollHint')" tabindex="0">
+            <table>
+              <thead>
+                <tr>
+                  <th>{{ t('id') }}</th>
+                  <th>{{ t('product') }}</th>
+                  <th>{{ t('quantity') }}</th>
+                  <th>{{ t('date') }}</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="operation in exits" :key="operation.id">
+                  <td>{{ operation.id }}</td>
+                  <td>{{ operation.productName }}</td>
+                  <td>{{ operation.quantity }}</td>
+                  <td>{{ operation.date }}</td>
+                </tr>
+                <tr v-if="exits.length === 0">
+                  <td colspan="4">{{ t('noReportData') }}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
         </div>
-
         <div v-if="selectedReport === 'Mermas'">
           <h2>{{ t('wasteReport') }}</h2>
-
-          <table>
-            <thead>
-            <tr>
-              <th>{{ t('id') }}</th>
-              <th>{{ t('product') }}</th>
-              <th>{{ t('quantity') }}</th>
-              <th>{{ t('reason') }}</th>
-              <th>{{ t('date') }}</th>
-            </tr>
-            </thead>
-
-            <tbody>
-            <tr
-                v-for="waste in wasteStore.wastes"
-                :key="waste.id"
-            >
-              <td>{{ waste.id }}</td>
-              <td>{{ waste.productName }}</td>
-              <td>{{ waste.quantity }}</td>
-              <td>{{ translateValue(waste.reason) }}</td>
-              <td>{{ waste.date }}</td>
-            </tr>
-            <tr v-if="wasteStore.wastes.length === 0"><td colspan="5">{{ t('noReportData') }}</td></tr>
-            </tbody>
-          </table>
+          <p class="table-hint">{{ t('tableScrollHint') }}</p>
+          <div class="table-scroll" role="region" :aria-label="t('tableScrollHint')" tabindex="0">
+            <table>
+              <thead>
+                <tr>
+                  <th>{{ t('id') }}</th>
+                  <th>{{ t('product') }}</th>
+                  <th>{{ t('quantity') }}</th>
+                  <th>{{ t('reason') }}</th>
+                  <th>{{ t('date') }}</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="waste in wasteStore.wastes" :key="waste.id">
+                  <td>{{ waste.id }}</td>
+                  <td>{{ waste.productName }}</td>
+                  <td>{{ waste.quantity }}</td>
+                  <td>{{ translateValue(waste.reason) }}</td>
+                  <td>{{ waste.date }}</td>
+                </tr>
+                <tr v-if="wasteStore.wastes.length === 0">
+                  <td colspan="5">{{ t('noReportData') }}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
         </div>
-        </template>
-      </div>
-    </main>
-  </div>
+      </template>
+    </div>
+  </AppLayout>
 </template>
-
-<style scoped>
-.page {
-  display: flex;
-}
-
-.main-content {
-  flex: 1;
-}
-
-.content {
-  padding: 30px;
-}
-
-.report-selector {
-  display: flex;
-  flex-direction: column;
-  width: 250px;
-  gap: 8px;
-  margin: 25px 0;
-}
-
-select {
-  padding: 10px;
-  border: 1px solid #ccc;
-  border-radius: 6px;
-}
-
-table {
-  width: 100%;
-  border-collapse: collapse;
-  background-color: white;
-  margin-top: 20px;
-}
-
-th,
-td {
-  padding: 12px;
-  border-bottom: 1px solid #ddd;
-  text-align: left;
-}
-
-th {
-  background-color: #f3f4f6;
-}
-</style>

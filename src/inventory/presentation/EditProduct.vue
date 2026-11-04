@@ -1,10 +1,12 @@
 <script setup>
+import AppLayout from '../../shared/presentation/layouts/AppLayout.vue'
+import PageHeader from '../../shared/presentation/components/PageHeader.vue'
+import RequestState from '../../shared/presentation/components/RequestState.vue'
+
 import { t, translateValue } from '../../i18n.js'
 import { ref, computed, watch } from 'vue'
 import Button from 'primevue/button'
 import { useToast } from 'primevue/usetoast'
-import Sidebar from '../../shared/presentation/components/Sidebar.vue'
-import Header from '../../shared/presentation/components/Header.vue'
 import InputText from 'primevue/inputtext'
 import { useRoute, useRouter } from 'vue-router'
 import { useProductsStore } from '../application/products.js'
@@ -63,144 +65,63 @@ const updateProduct = async () => {
 </script>
 
 <template>
-  <div class="layout">
-
-    <Sidebar />
-
-    <div class="main">
-
-      <Header />
-
-      <div class="content">
-
-        <h1>{{ t('editProduct') }}</h1>
-        <p>{{ t('editProductSubtitle') }}</p>
-
-        <p v-if="productsStore.loading" role="status">{{ t('loadingData') }}</p>
-        <div v-else-if="productsStore.loadError" role="alert">
-          <p>{{ t(productsStore.loadError) }}</p><Button @click="loadData">{{ t('retry') }}</Button>
+  <AppLayout>
+    <div class="content">
+      <PageHeader :title="t('editProduct')" :description="t('editProductSubtitle')" />
+      <RequestState :loading="productsStore.loading" :error="productsStore.loadError" @retry="loadData" />
+      <p v-if="missing" role="alert">{{ t('productNotFound') }}</p>
+      <form v-if="loaded" class="panel form-grid" @submit.prevent="updateProduct" novalidate>
+        <div class="form-intro">
+          <h2>{{ t('productInformation') }}</h2>
+          <p>{{ t('productFormHint') }}</p>
         </div>
-        <p v-else-if="missing" role="alert">{{ t('productNotFound') }}</p>
-        <div v-if="loaded" class="form-box">
-
-          <label>{{ t('name') }}</label>
-          <InputText :disabled="busy"
+        <div class="span-2">
+          <div class="field">
+            <label for="product-name">{{ t('name') }}</label>
+            <InputText
+              id="product-name"
               v-model="name"
-              type="text" />
-
-          <label>{{ t('category') }}</label>
-          <select v-model="category" :disabled="busy">
+              :disabled="busy"
+              type="text"
+              autocomplete="off"
+              aria-required="true"
+            />
+          </div>
+        </div>
+        <div class="field">
+          <label for="product-category">{{ t('category') }}</label>
+          <select id="product-category" v-model="category" :disabled="busy" aria-required="true">
             <option v-if="category && !PRODUCT_CATEGORIES.includes(category)" :value="category">{{ translateValue(category) }}</option>
             <option v-for="item in PRODUCT_CATEGORIES" :key="item" :value="item">{{ translateValue(item) }}</option>
           </select>
-
-          <label>{{ t('price') }}</label>
-          <input :disabled="busy"
-              v-model="price"
-              type="number" min="0"
-              step="any"
-          >
-
-          <label>{{ t('stock') }}</label>
-          <input :value="stock" type="number" readonly :aria-label="t('stock')">
-          <small>{{ t('stockReadOnlyHint') }}</small>
-
-          <label>{{ t('expirationDate') }}</label>
-          <input :disabled="busy"
-              v-model="expirationDate"
-              type="date"
-          >
-
-          <div class="buttons">
-            <Button
-                class="cancel-btn" :disabled="busy"
-                @click="router.push('/products')"
-            >
-              {{ t('cancel') }}
-            </Button>
-
-            <Button
-                class="save-btn"
-                :disabled="busy" :loading="busy"
-                @click="updateProduct"
-            >
-              {{ t('saveChanges') }}
-            </Button>
-          </div>
-
         </div>
-
-      </div>
-
+        <div class="field">
+          <label for="product-price">{{ t('price') }}</label>
+          <InputText
+            id="product-price"
+            v-model="price"
+            :disabled="busy"
+            type="number"
+            min="0"
+            step="any"
+            inputmode="decimal"
+            aria-required="true"
+          />
+        </div>
+        <div class="field">
+          <label for="product-stock">{{ t('stock') }}</label>
+          <InputText id="product-stock" :value="stock" type="number" readonly aria-describedby="stock-hint" />
+          <small id="stock-hint">{{ t('stockReadOnlyHint') }}</small>
+        </div>
+        <div class="field">
+          <label for="product-expiry">{{ t('expirationDate') }}</label>
+          <InputText id="product-expiry" v-model="expirationDate" :disabled="busy" type="date" aria-required="true" />
+        </div>
+        <div class="form-actions">
+          <Button type="button" class="cancel-btn" :disabled="busy" @click="router.push('/products')">{{ t('cancel') }}</Button>
+          <Button type="submit" class="save-btn" :disabled="busy" :loading="busy">{{ t('saveChanges') }}</Button>
+        </div>
+      </form>
     </div>
-
-  </div>
+  </AppLayout>
 </template>
-
-<style scoped>
-.layout {
-  display: flex;
-  min-height: 100vh;
-}
-
-.main {
-  flex: 1;
-  background: #f4f7fb;
-}
-
-.content {
-  padding: 30px;
-}
-
-.content p {
-  color: #64748b;
-}
-
-.form-box {
-  margin-top: 25px;
-  background: white;
-  padding: 25px;
-  border-radius: 10px;
-  max-width: 600px;
-}
-
-label {
-  display: block;
-  margin-top: 15px;
-  margin-bottom: 7px;
-}
-
-input,
-select {
-  width: 100%;
-  padding: 11px;
-  border: 1px solid #cbd5e1;
-  border-radius: 6px;
-}
-
-.cancel-btn {
-  background-color: #6b7280;
-  color: white;
-  border: none;
-  padding: 10px 15px;
-  border-radius: 6px;
-  cursor: pointer;
-}
-
-.save-btn {
-  background-color: #16a34a;
-  color: white;
-  border: none;
-  padding: 10px 15px;
-  border-radius: 6px;
-  cursor: pointer;
-}
-
-.cancel-btn:hover {
-  background-color: #4b5563;
-}
-
-.save-btn:hover {
-  background-color: #15803d;
-}
-</style>

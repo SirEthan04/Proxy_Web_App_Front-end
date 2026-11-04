@@ -1,10 +1,14 @@
 <script setup>
+import InputText from 'primevue/inputtext'
+
+import AppLayout from '../../shared/presentation/layouts/AppLayout.vue'
+import PageHeader from '../../shared/presentation/components/PageHeader.vue'
+import RequestState from '../../shared/presentation/components/RequestState.vue'
+
 import { t, translateValue } from '../../i18n.js'
 import { ref, computed, onMounted } from 'vue'
 import Button from 'primevue/button'
 import { useToast } from 'primevue/usetoast'
-import Sidebar from '../../shared/presentation/components/Sidebar.vue'
-import Header from '../../shared/presentation/components/Header.vue'
 import { useProductsStore } from '../../inventory/application/products.js'
 import { useWasteStore } from '../application/waste.js'
 import { WASTE_REASONS } from '../domain/waste.js'
@@ -52,29 +56,18 @@ const saveWaste = async () => {
 </script>
 
 <template>
-  <div class="page">
-    <Sidebar />
+  <AppLayout>
+    <div class="content">
+        <PageHeader :title="t('waste')" :description="t('wasteSubtitle')" />
 
-    <main class="main-content">
-      <Header />
-
-      <div class="content">
-        <h1>{{ t('waste') }}</h1>
-        <p>{{ t('wasteSubtitle') }}</p>
-
-        <p v-if="loading" role="status">{{ t('loadingData') }}</p>
-        <div v-else-if="loadError" role="alert">
-          <p>{{ t(loadError) }}</p><Button @click="loadData">{{ t('retry') }}</Button>
-        </div>
-        <div v-if="wasteStore.needsReview" role="alert">
+        <RequestState :loading="loading" :error="loadError" @retry="loadData" />
+        <div v-if="wasteStore.needsReview" class="review-warning" role="alert">
           <p>{{ t('partialWriteWarning') }}</p>
           <Button @click="reloadForReview" :disabled="loading">{{ t('reloadData') }}</Button>
           <Button v-if="dataReady && reviewLoaded" @click="wasteStore.needsReview = false">{{ t('reviewCompleted') }}</Button>
         </div>
-        <div class="form">
-          <label>{{ t('product') }}</label>
-
-          <select :disabled="busy || !dataReady || wasteStore.needsReview" v-model="selectedProductId">
+        <form class="panel form-grid form" @submit.prevent="saveWaste" novalidate><div class="form-intro"><h2>{{ t('registerWaste') }}</h2><p>{{ t('movementFormHint') }}</p></div>
+          <div class="field"><label for="waste-1">{{ t('product') }}</label><select id="waste-1" :disabled="busy || !dataReady || wasteStore.needsReview" v-model="selectedProductId">
             <option value="">{{ t('selectProduct') }}</option>
 
             <option
@@ -84,19 +77,15 @@ const saveWaste = async () => {
             >
               {{ product.name }} - {{ t('stock') }}: {{ product.stock }}
             </option>
-          </select>
+          </select></div>
 
-          <label>{{ t('quantity') }}</label>
-
-          <input :disabled="busy || !dataReady || wasteStore.needsReview"
+          <div class="field"><label for="waste-2">{{ t('quantity') }}</label><InputText id="waste-2" :disabled="busy || !dataReady || wasteStore.needsReview"
               v-model="quantity"
               type="number"
               :placeholder="t('quantity')"
-          >
+           /></div>
 
-          <label>{{ t('reason') }}</label>
-
-          <select :disabled="busy || !dataReady || wasteStore.needsReview" v-model="reason">
+          <div class="field"><label for="waste-3">{{ t('reason') }}</label><select id="waste-3" :disabled="busy || !dataReady || wasteStore.needsReview" v-model="reason">
             <option value="">{{ t('selectReason') }}</option>
 
             <option
@@ -106,19 +95,20 @@ const saveWaste = async () => {
             >
               {{ translateValue(wasteReason) }}
             </option>
-          </select>
+          </select></div>
 
-          <Button
+          <div class="form-actions"><Button
               class="save-btn" :disabled="busy || !dataReady || wasteStore.needsReview" :loading="busy"
-              @click="saveWaste"
+              type="submit"
           >
             {{ t('registerWaste') }}
-          </Button>
-        </div>
+          </Button></div>
+        </form>
 
         <h2>{{ t('wasteHistory') }}</h2>
 
-        <table v-if="dataReady">
+        <p class="table-hint">{{ t('tableScrollHint') }}</p>
+<div class="table-scroll" role="region" :aria-label="t('tableScrollHint')" tabindex="0"><table v-if="dataReady">
           <thead>
           <tr>
             <th>{{ t('id') }}</th>
@@ -147,69 +137,7 @@ const saveWaste = async () => {
             </td>
           </tr>
           </tbody>
-        </table>
-      </div>
-    </main>
-  </div>
+        </table></div>
+    </div>
+  </AppLayout>
 </template>
-
-<style scoped>
-.page {
-  display: flex;
-}
-
-.main-content {
-  flex: 1;
-}
-
-.content {
-  padding: 30px;
-}
-
-.form {
-  max-width: 500px;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  margin-bottom: 40px;
-}
-
-input,
-select {
-  padding: 10px;
-  border: 1px solid #ccc;
-  border-radius: 6px;
-}
-
-.save-btn {
-  margin-top: 10px;
-  background-color: #dc2626;
-  color: white;
-  border: none;
-  padding: 10px 15px;
-  border-radius: 6px;
-  cursor: pointer;
-}
-
-.save-btn:hover {
-  background-color: #b91c1c;
-}
-
-table {
-  width: 100%;
-  border-collapse: collapse;
-  background-color: white;
-}
-
-th,
-td {
-  padding: 12px;
-  border-bottom: 1px solid #ddd;
-  text-align: left;
-}
-
-.empty {
-  text-align: center;
-  padding: 25px;
-}
-</style>

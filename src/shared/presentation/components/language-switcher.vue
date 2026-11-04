@@ -12,6 +12,8 @@ const toggleLanguage = () => setLocale(nextLanguage.value)
 
 <template>
   <Button
+    severity="secondary"
+    outlined
     type="button"
     class="language-switcher"
     :aria-label="`${t('language')}: ${nextLanguageLabel}`"
@@ -23,27 +25,6 @@ const toggleLanguage = () => setLocale(nextLanguage.value)
 </template>
 
 <style scoped>
-.language-switcher {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 9px 12px;
-  border: 1px solid #cbd5e1;
-  border-radius: 6px;
-  background: white;
-  color: #0f2942;
-  font: inherit;
-  font-size: 14px;
-  cursor: pointer;
-}
-
-.language-switcher:hover {
-  background: #f1f5f9;
-  border-color: #168cff;
-}
-
-.language-switcher:focus-visible {
-  outline: 2px solid #168cff;
-  outline-offset: 3px;
-}
+.language-switcher { display: inline-flex; align-items: center; gap: 6px; padding: 9px 12px; border: 1px solid #dce4e7; background: white; color: #53656e; font-size: 13px; white-space: nowrap; min-height: 44px; }
+.language-switcher:hover { background: #f5f8f6; }
 </style>

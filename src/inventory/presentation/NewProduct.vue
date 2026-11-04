@@ -1,10 +1,12 @@
 <script setup>
+import AppLayout from '../../shared/presentation/layouts/AppLayout.vue'
+import PageHeader from '../../shared/presentation/components/PageHeader.vue'
+import RequestState from '../../shared/presentation/components/RequestState.vue'
+
 import { t, translateValue } from '../../i18n.js'
 import { ref, computed } from 'vue'
 import Button from 'primevue/button'
 import { useToast } from 'primevue/usetoast'
-import Sidebar from '../../shared/presentation/components/Sidebar.vue'
-import Header from '../../shared/presentation/components/Header.vue'
 import InputText from 'primevue/inputtext'
 import { useRouter } from 'vue-router'
 import { useProductsStore } from '../application/products.js'
@@ -40,127 +42,68 @@ const saveProduct = async () => {
 </script>
 
 <template>
-  <div class="page">
-    <Sidebar />
-
-    <main class="main-content">
-      <Header />
-
-      <div class="content">
-        <h1>{{ t('newProduct') }}</h1>
-
-        <div class="form">
-          <label>{{ t('name') }}</label>
-          <InputText :disabled="busy"
+  <AppLayout>
+    <div class="content">
+      <PageHeader :title="t('newProduct')" :description="t('newProductSubtitle')" />
+      <form class="panel form-grid" @submit.prevent="saveProduct" novalidate>
+        <div class="form-intro">
+          <h2>{{ t('productInformation') }}</h2>
+          <p>{{ t('productFormHint') }}</p>
+        </div>
+        <div class="span-2">
+          <div class="field">
+            <label for="product-name">{{ t('name') }}</label>
+            <InputText
+              id="product-name"
               v-model="name"
+              :disabled="busy"
               type="text"
-              :placeholder="t('productName')" />
-
-          <label>{{ t('category') }}</label>
-          <select v-model="category" :disabled="busy">
-            <option value="">{{ t('selectCategory') }}</option>
-            <option v-for="category in PRODUCT_CATEGORIES" :key="category" :value="category">{{ translateValue(category) }}</option>
-          </select>
-
-          <label>{{ t('price') }}</label>
-          <input :disabled="busy"
-              v-model="price"
-              type="number" min="0" step="any"
-              :placeholder="t('price')"
-          >
-
-          <label>{{ t('stock') }}</label>
-          <input :disabled="busy"
-              v-model="stock"
-              type="number"
-              :placeholder="t('stock')"
-          >
-
-          <label>{{ t('expirationDate') }}</label>
-          <input :disabled="busy"
-              v-model="expirationDate"
-              type="date"
-          >
-
-          <div class="buttons">
-            <Button
-                class="cancel-btn" :disabled="busy"
-                @click="router.push('/products')"
-            >
-              {{ t('cancel') }}
-            </Button>
-
-            <Button
-                class="save-btn"
-                :disabled="busy" :loading="busy"
-                @click="saveProduct"
-            >
-              {{ t('saveProduct') }}
-            </Button>
+              autocomplete="off"
+              aria-required="true"
+            />
           </div>
         </div>
-      </div>
-    </main>
-  </div>
+        <div class="field">
+          <label for="product-category">{{ t('category') }}</label>
+          <select id="product-category" v-model="category" :disabled="busy" aria-required="true">
+            <option value="">{{ t('selectCategory') }}</option>
+            <option v-for="item in PRODUCT_CATEGORIES" :key="item" :value="item">{{ translateValue(item) }}</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="product-price">{{ t('price') }}</label>
+          <InputText
+            id="product-price"
+            v-model="price"
+            :disabled="busy"
+            type="number"
+            min="0"
+            step="any"
+            inputmode="decimal"
+            aria-required="true"
+          />
+        </div>
+        <div class="field">
+          <label for="product-stock">{{ t('stock') }}</label>
+          <InputText
+            id="product-stock"
+            v-model="stock"
+            :disabled="busy"
+            type="number"
+            inputmode="decimal"
+            step="any"
+            aria-required="true"
+          />
+        </div>
+        <div class="field">
+          <label for="product-expiry">{{ t('expirationDate') }}</label>
+          <InputText id="product-expiry" v-model="expirationDate" :disabled="busy" type="date" aria-required="true" />
+        </div>
+        <div class="form-actions">
+          <Button type="button" class="cancel-btn" :disabled="busy" @click="router.push('/products')">{{ t('cancel') }}</Button>
+          <Button type="submit" class="save-btn" :disabled="busy" :loading="busy">{{ t('saveProduct') }}</Button>
+        </div>
+      </form>
+    </div>
+  </AppLayout>
 </template>
-
-<style scoped>
-.page {
-  display: flex;
-}
-
-.main-content {
-  flex: 1;
-}
-
-.content {
-  padding: 30px;
-}
-
-.form {
-  max-width: 500px;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-input,
-select {
-  padding: 10px;
-  border: 1px solid #ccc;
-  border-radius: 6px;
-}
-
-.buttons {
-  display: flex;
-  gap: 10px;
-  margin-top: 15px;
-}
-
-.cancel-btn {
-  background-color: #6b7280;
-  color: white;
-  border: none;
-  padding: 10px 15px;
-  border-radius: 6px;
-  cursor: pointer;
-}
-
-.cancel-btn:hover {
-  background-color: #4b5563;
-}
-
-.save-btn {
-  background-color: #16a34a;
-  color: white;
-  border: none;
-  padding: 10px 15px;
-  border-radius: 6px;
-  cursor: pointer;
-  font-weight: bold;
-}
-
-.save-btn:hover {
-  background-color: #15803d;
-}
-</style>

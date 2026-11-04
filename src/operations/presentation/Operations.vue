@@ -1,10 +1,14 @@
 <script setup>
+import InputText from 'primevue/inputtext'
+
+import AppLayout from '../../shared/presentation/layouts/AppLayout.vue'
+import PageHeader from '../../shared/presentation/components/PageHeader.vue'
+import RequestState from '../../shared/presentation/components/RequestState.vue'
+
 import { t, translateValue } from '../../i18n.js'
 import { ref, computed, onMounted } from 'vue'
 import Button from 'primevue/button'
 import { useToast } from 'primevue/usetoast'
-import Sidebar from '../../shared/presentation/components/Sidebar.vue'
-import Header from '../../shared/presentation/components/Header.vue'
 import { useProductsStore } from '../../inventory/application/products.js'
 import { useOperationsStore } from '../application/operations.js'
 import { OPERATION_TYPES } from '../domain/operation.js'
@@ -52,29 +56,18 @@ const saveOperation = async () => {
 </script>
 
 <template>
-  <div class="page">
-    <Sidebar />
+  <AppLayout>
+    <div class="content">
+        <PageHeader :title="t('operations')" :description="t('operationsSubtitle')" />
 
-    <main class="main-content">
-      <Header />
-
-      <div class="content">
-        <h1>{{ t('operations') }}</h1>
-        <p>{{ t('operationsSubtitle') }}</p>
-
-        <p v-if="loading" role="status">{{ t('loadingData') }}</p>
-        <div v-else-if="loadError" role="alert">
-          <p>{{ t(loadError) }}</p><Button @click="loadData">{{ t('retry') }}</Button>
-        </div>
-        <div v-if="operationsStore.needsReview" role="alert">
+        <RequestState :loading="loading" :error="loadError" @retry="loadData" />
+        <div v-if="operationsStore.needsReview" class="review-warning" role="alert">
           <p>{{ t('partialWriteWarning') }}</p>
           <Button @click="reloadForReview" :disabled="loading">{{ t('reloadData') }}</Button>
           <Button v-if="dataReady && reviewLoaded" @click="operationsStore.needsReview = false">{{ t('reviewCompleted') }}</Button>
         </div>
-        <div class="form">
-          <label>{{ t('product') }}</label>
-
-          <select :disabled="busy || !dataReady || operationsStore.needsReview" v-model="selectedProductId">
+        <form class="panel form-grid form" @submit.prevent="saveOperation" novalidate><div class="form-intro"><h2>{{ t('registerMovement') }}</h2><p>{{ t('movementFormHint') }}</p></div>
+          <div class="field"><label for="movement-1">{{ t('product') }}</label><select id="movement-1" :disabled="busy || !dataReady || operationsStore.needsReview" v-model="selectedProductId">
             <option value="">{{ t('selectProduct') }}</option>
 
             <option
@@ -84,11 +77,9 @@ const saveOperation = async () => {
             >
               {{ product.name }} - {{ t('stock') }}: {{ product.stock }}
             </option>
-          </select>
+          </select></div>
 
-          <label>{{ t('operationType') }}</label>
-
-          <select :disabled="busy || !dataReady || operationsStore.needsReview" v-model="operationType">
+          <div class="field"><label for="movement-2">{{ t('operationType') }}</label><select id="movement-2" :disabled="busy || !dataReady || operationsStore.needsReview" v-model="operationType">
             <option value="">{{ t('selectOperation') }}</option>
 
             <option :value="OPERATION_TYPES.ENTRY">
@@ -98,27 +89,26 @@ const saveOperation = async () => {
             <option :value="OPERATION_TYPES.EXIT">
               {{ translateValue(OPERATION_TYPES.EXIT) }}
             </option>
-          </select>
+          </select></div>
 
-          <label>{{ t('quantity') }}</label>
-
-          <input :disabled="busy || !dataReady || operationsStore.needsReview"
+          <div class="field"><label for="movement-3">{{ t('quantity') }}</label><InputText id="movement-3" :disabled="busy || !dataReady || operationsStore.needsReview"
               v-model="quantity"
               type="number"
               :placeholder="t('quantity')"
-          >
+           /></div>
 
-          <Button
+          <div class="form-actions"><Button
               class="save-btn" :disabled="busy || !dataReady || operationsStore.needsReview" :loading="busy"
-              @click="saveOperation"
+              type="submit"
           >
             {{ t('registerOperation') }}
-          </Button>
-        </div>
+          </Button></div>
+        </form>
 
         <h2>{{ t('operationHistory') }}</h2>
 
-        <table v-if="dataReady">
+        <p class="table-hint">{{ t('tableScrollHint') }}</p>
+<div class="table-scroll" role="region" :aria-label="t('tableScrollHint')" tabindex="0"><table v-if="dataReady">
           <thead>
           <tr>
             <th>{{ t('id') }}</th>
@@ -147,69 +137,7 @@ const saveOperation = async () => {
             </td>
           </tr>
           </tbody>
-        </table>
-      </div>
-    </main>
-  </div>
+        </table></div>
+    </div>
+  </AppLayout>
 </template>
-
-<style scoped>
-.page {
-  display: flex;
-}
-
-.main-content {
-  flex: 1;
-}
-
-.content {
-  padding: 30px;
-}
-
-.form {
-  max-width: 500px;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  margin-bottom: 40px;
-}
-
-input,
-select {
-  padding: 10px;
-  border: 1px solid #ccc;
-  border-radius: 6px;
-}
-
-.save-btn {
-  margin-top: 10px;
-  background-color: #16a34a;
-  color: white;
-  border: none;
-  padding: 10px 15px;
-  border-radius: 6px;
-  cursor: pointer;
-}
-
-.save-btn:hover {
-  background-color: #15803d;
-}
-
-table {
-  width: 100%;
-  border-collapse: collapse;
-  background-color: white;
-}
-
-th,
-td {
-  padding: 12px;
-  border-bottom: 1px solid #ddd;
-  text-align: left;
-}
-
-.empty {
-  text-align: center;
-  padding: 25px;
-}
-</style>

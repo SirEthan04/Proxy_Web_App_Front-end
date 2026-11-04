@@ -2,27 +2,27 @@
 import Button from 'primevue/button'
 import { useRouter } from 'vue-router'
 import { t } from '../../i18n.js'
-import Sidebar from '../../shared/presentation/components/Sidebar.vue'
-import Header from '../../shared/presentation/components/Header.vue'
+import AppLayout from '../../shared/presentation/layouts/AppLayout.vue'
+import PageHeader from '../../shared/presentation/components/PageHeader.vue'
+import RequestState from '../../shared/presentation/components/RequestState.vue'
+import NavIcon from '../../shared/presentation/components/NavIcon.vue'
 const router = useRouter()
 </script>
-
 <template>
-  <div class="page">
-    <Sidebar />
-    <main>
-      <Header />
-      <section role="alert">
-        <h1>{{ t('accessDeniedTitle') }}</h1>
-        <p>{{ t('accessDeniedMessage') }}</p>
-        <Button @click="router.replace('/dashboard')">{{ t('backToDashboard') }}</Button>
+  <AppLayout>
+    <div class="content">
+      <PageHeader :title="t('accessDeniedTitle')" />
+      <section class="panel denied-panel" role="alert">
+        <NavIcon name="alert" />
+        <h2>{{ t('accessDeniedMessage') }}</h2>
+        <p>{{ t('accessDeniedHelp') }}</p>
+        <Button class="save-btn" @click="router.replace('/dashboard')">{{ t('backToDashboard') }}</Button>
       </section>
-    </main>
-  </div>
+    </div>
+  </AppLayout>
 </template>
-
 <style scoped>
-.page { display: flex; }
-main { flex: 1; min-width: 0; }
-section { padding: 30px; }
+.denied-panel { max-width: 640px; padding: 36px; }
+.denied-panel > svg { color: #8b713e; width: 40px; height: 40px; margin-bottom: 18px; }
+.denied-panel h2 { max-width: 480px; }
 </style>
