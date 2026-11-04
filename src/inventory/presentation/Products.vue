@@ -40,7 +40,11 @@
           </select>
         </div>
 
-        <table>
+        <p v-if="loading" role="status">{{ t('loadingData') }}</p>
+        <div v-else-if="loadError" role="alert">
+          <p>{{ t(loadError) }}</p><Button @click="loadData">{{ t('retry') }}</Button>
+        </div>
+        <table v-if="dataReady">
           <thead>
           <tr>
             <th>{{ t('id') }}</th>
@@ -75,7 +79,7 @@
 
               <Button
                   class="delete-btn"
-                  @click="productsStore.deleteProduct(product.id)"
+                  @click="deleteProduct(product.id)" :disabled="productsStore.saving"
               >
                 {{ t('delete') }}
               </Button>
@@ -100,6 +104,7 @@ import InputText from 'primevue/inputtext'
 import { t, translateValue } from '../../i18n.js'
 
 import { ref, computed, onMounted } from 'vue'
+import { useToast } from 'primevue/usetoast'
 
 import Sidebar from '../../shared/presentation/components/Sidebar.vue'
 import Header from '../../shared/presentation/components/Header.vue'
@@ -125,9 +130,25 @@ const filteredProducts = computed(() => {
   })
 })
 
-onMounted(() => {
-  productsStore.loadProducts()
+const toast = useToast()
+const notify = (severity, key) => toast.add({
+  severity,
+  summary: t(severity === 'success' ? 'successTitle' : 'errorTitle'),
+  detail: t(key),
+  life: severity === 'success' ? 4000 : 8000
 })
+const loading = computed(() => productsStore.loading)
+const loadError = computed(() => productsStore.loadError)
+const dataReady = computed(() => !loading.value && !loadError.value)
+const loadData = async () => {
+  await Promise.allSettled([productsStore.loadProducts()])
+}
+onMounted(loadData)
+const deleteProduct = async id => {
+  if (productsStore.saving) return
+  try { await productsStore.deleteProduct(id); notify('success', 'productDeleted') }
+  catch (error) { notify('error', error.messageKey || productsStore.error || 'deleteProductFailed') }
+}
 </script>
 
 <style scoped>

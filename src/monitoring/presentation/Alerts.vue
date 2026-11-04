@@ -1,4 +1,5 @@
 <script setup>
+import Button from 'primevue/button'
 import { t } from '../../i18n.js'
 
 import { computed, onMounted } from 'vue'
@@ -16,9 +17,13 @@ import {
 
 const productsStore = useProductsStore()
 
-onMounted(async () => {
-  await productsStore.loadProducts()
-})
+const loading = computed(() => productsStore.loading)
+const loadError = computed(() => productsStore.loadError)
+const dataReady = computed(() => !loading.value && !loadError.value)
+const loadData = async () => {
+  await Promise.allSettled([productsStore.loadProducts()])
+}
+onMounted(loadData)
 
 const outOfStockProducts = computed(() => {
   return getOutOfStockProducts(productsStore.products)
@@ -47,6 +52,11 @@ const expiringProducts = computed(() => {
       <div class="content">
         <h1>{{ t('alerts') }}</h1>
         <p>{{ t('alertsSubtitle') }}</p>
+        <p v-if="loading" role="status">{{ t('loadingData') }}</p>
+        <div v-else-if="loadError" role="alert">
+          <p>{{ t(loadError) }}</p><Button @click="loadData">{{ t('retry') }}</Button>
+        </div>
+        <template v-if="dataReady">
 
         <div class="alerts-grid">
 
@@ -192,6 +202,7 @@ const expiringProducts = computed(() => {
           </tbody>
         </table>
 
+        </template>
       </div>
     </main>
   </div>

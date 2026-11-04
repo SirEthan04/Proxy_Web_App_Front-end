@@ -1,4 +1,5 @@
 <script setup>
+import Button from 'primevue/button'
 import { t, translateValue } from '../../i18n.js'
 
 import { computed, onMounted, ref } from 'vue'
@@ -19,11 +20,13 @@ const wasteStore = useWasteStore()
 
 const selectedReport = ref('Inventario')
 
-onMounted(async () => {
-  await productsStore.loadProducts()
-  await operationsStore.loadOperations()
-  await wasteStore.loadWastes()
-})
+const loading = computed(() => productsStore.loading || operationsStore.loading || wasteStore.loading)
+const loadError = computed(() => productsStore.loadError || operationsStore.loadError || wasteStore.loadError)
+const dataReady = computed(() => !loading.value && !loadError.value)
+const loadData = async () => {
+  await Promise.allSettled([productsStore.loadProducts(), operationsStore.loadOperations(), wasteStore.loadWastes()])
+}
+onMounted(loadData)
 
 const entries = computed(() => {
   return getEntries(operationsStore.operations)
@@ -44,6 +47,11 @@ const exits = computed(() => {
       <div class="content">
         <h1>{{ t('reporting') }}</h1>
         <p>{{ t('reportsSubtitle') }}</p>
+        <p v-if="loading" role="status">{{ t('loadingData') }}</p>
+        <div v-else-if="loadError" role="alert">
+          <p>{{ t(loadError) }}</p><Button @click="loadData">{{ t('retry') }}</Button>
+        </div>
+        <template v-if="dataReady">
 
         <div class="report-selector">
           <label>{{ t('reportType') }}</label>
@@ -83,6 +91,7 @@ const exits = computed(() => {
               <td>S/ {{ product.price }}</td>
               <td>{{ translateValue(product.status) }}</td>
             </tr>
+            <tr v-if="productsStore.products.length === 0"><td colspan="6">{{ t('noReportData') }}</td></tr>
             </tbody>
           </table>
         </div>
@@ -110,6 +119,7 @@ const exits = computed(() => {
               <td>{{ operation.quantity }}</td>
               <td>{{ operation.date }}</td>
             </tr>
+            <tr v-if="entries.length === 0"><td colspan="4">{{ t('noReportData') }}</td></tr>
             </tbody>
           </table>
         </div>
@@ -137,6 +147,7 @@ const exits = computed(() => {
               <td>{{ operation.quantity }}</td>
               <td>{{ operation.date }}</td>
             </tr>
+            <tr v-if="exits.length === 0"><td colspan="4">{{ t('noReportData') }}</td></tr>
             </tbody>
           </table>
         </div>
@@ -166,9 +177,11 @@ const exits = computed(() => {
               <td>{{ translateValue(waste.reason) }}</td>
               <td>{{ waste.date }}</td>
             </tr>
+            <tr v-if="wasteStore.wastes.length === 0"><td colspan="5">{{ t('noReportData') }}</td></tr>
             </tbody>
           </table>
         </div>
+        </template>
       </div>
     </main>
   </div>

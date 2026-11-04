@@ -3,14 +3,26 @@ import Button from 'primevue/button'
 import { t } from '../../../i18n.js'
 
 import { useRouter } from 'vue-router'
+import { computed } from 'vue'
+import { useToast } from 'primevue/usetoast'
+import { useProductsStore } from '../../../inventory/application/products.js'
+import { useUsersStore } from '../../../iam/application/users.js'
+import { useOperationsStore } from '../../../operations/application/operations.js'
+import { useWasteStore } from '../../../operations/application/waste.js'
 import { useAuthStore } from '../../../iam/application/auth.js'
 
 const router = useRouter()
 const authStore = useAuthStore()
 
+const toast = useToast()
+const stores = [useProductsStore(), useUsersStore(), useOperationsStore(), useWasteStore()]
+const busy = computed(() => stores.some(store => store.saving || store.submitting))
 const logout = () => {
+  if (busy.value) return
   authStore.logout()
-  router.push('/login')
+  for (const store of stores) store.clearSessionData()
+  if (authStore.error) toast.add({ severity: 'error', summary: t('errorTitle'), detail: t(authStore.error), life: 8000 })
+  router.replace('/login')
 }
 </script>
 
@@ -51,7 +63,7 @@ const logout = () => {
     </nav>
 
     <Button
-        class="logout"
+        class="logout" :disabled="busy"
         @click="logout"
     >
       {{ t('logout') }}

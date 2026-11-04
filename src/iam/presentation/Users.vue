@@ -1,7 +1,8 @@
 <script setup>
+import Button from 'primevue/button'
 import { t, translateValue } from '../../i18n.js'
 
-import { onMounted } from 'vue'
+import { computed, onMounted } from 'vue'
 
 import Sidebar from '../../shared/presentation/components/Sidebar.vue'
 import Header from '../../shared/presentation/components/Header.vue'
@@ -9,9 +10,13 @@ import { useUsersStore } from '../application/users.js'
 
 const usersStore = useUsersStore()
 
-onMounted(async () => {
-  await usersStore.loadUsers()
-})
+const loading = computed(() => usersStore.loading)
+const loadError = computed(() => usersStore.loadError)
+const dataReady = computed(() => !loading.value && !loadError.value)
+const loadData = async () => {
+  await Promise.allSettled([usersStore.loadUsers()])
+}
+onMounted(loadData)
 </script>
 
 <template>
@@ -25,7 +30,11 @@ onMounted(async () => {
         <h1>{{ t('users') }}</h1>
         <p>{{ t('usersSubtitle') }}</p>
 
-        <table>
+        <p v-if="loading" role="status">{{ t('loadingData') }}</p>
+        <div v-else-if="loadError" role="alert">
+          <p>{{ t(loadError) }}</p><Button @click="loadData">{{ t('retry') }}</Button>
+        </div>
+        <table v-if="dataReady">
           <thead>
           <tr>
             <th>{{ t('id') }}</th>

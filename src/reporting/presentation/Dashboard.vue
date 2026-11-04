@@ -1,4 +1,5 @@
 <script setup>
+import Button from 'primevue/button'
 import { t } from '../../i18n.js'
 
 import { computed, onMounted } from 'vue'
@@ -18,11 +19,13 @@ const productsStore = useProductsStore()
 const operationsStore = useOperationsStore()
 const wasteStore = useWasteStore()
 
-onMounted(async () => {
-  await productsStore.loadProducts()
-  await operationsStore.loadOperations()
-  await wasteStore.loadWastes()
-})
+const loading = computed(() => productsStore.loading || operationsStore.loading || wasteStore.loading)
+const loadError = computed(() => productsStore.loadError || operationsStore.loadError || wasteStore.loadError)
+const dataReady = computed(() => !loading.value && !loadError.value)
+const loadData = async () => {
+  await Promise.allSettled([productsStore.loadProducts(), operationsStore.loadOperations(), wasteStore.loadWastes()])
+}
+onMounted(loadData)
 
 const totalProducts = computed(() => {
   return getTotalProducts(productsStore.products)
@@ -81,6 +84,11 @@ const totalWastes = computed(() => {
       <div class="content">
         <h1>{{ t('dashboardTitle') }}</h1>
         <p>{{ t('dashboardSubtitle') }}</p>
+        <p v-if="loading" role="status">{{ t('loadingData') }}</p>
+        <div v-else-if="loadError" role="alert">
+          <p>{{ t(loadError) }}</p><Button @click="loadData">{{ t('retry') }}</Button>
+        </div>
+        <template v-if="dataReady">
 
         <div class="cards">
 
@@ -115,6 +123,7 @@ const totalWastes = computed(() => {
           </div>
 
         </div>
+        </template>
       </div>
     </main>
   </div>

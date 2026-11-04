@@ -1,80 +1,53 @@
 <script setup>
-import Button from 'primevue/button'
 import { t, translateValue } from '../../i18n.js'
-
-import { ref, onMounted } from 'vue'
-
+import { ref, computed, onMounted } from 'vue'
+import Button from 'primevue/button'
+import { useToast } from 'primevue/usetoast'
 import Sidebar from '../../shared/presentation/components/Sidebar.vue'
 import Header from '../../shared/presentation/components/Header.vue'
-
 import { useProductsStore } from '../../inventory/application/products.js'
 import { useWasteStore } from '../application/waste.js'
 import { WASTE_REASONS } from '../domain/waste.js'
-import { getProductStatus } from '../../inventory/domain/product.js'
 
 const productsStore = useProductsStore()
 const wasteStore = useWasteStore()
-
+const toast = useToast()
+const notify = (severity, key) => toast.add({
+  severity,
+  summary: t(severity === 'success' ? 'successTitle' : 'errorTitle'),
+  detail: t(key),
+  life: severity === 'success' ? 4000 : 8000
+})
 const selectedProductId = ref('')
 const quantity = ref('')
 const reason = ref('')
-
-onMounted(async () => {
-  await productsStore.loadProducts()
-  await wasteStore.loadWastes()
-})
-
+const busy = computed(() => wasteStore.submitting || wasteStore.saving || productsStore.saving)
+const loading = computed(() => productsStore.loading || wasteStore.loading)
+const loadError = computed(() => productsStore.loadError || wasteStore.loadError)
+const dataReady = computed(() => !loading.value && !loadError.value)
+const loadData = async () => {
+  await Promise.allSettled([productsStore.loadProducts(), wasteStore.loadWastes()])
+}
+onMounted(loadData)
+const reviewLoaded = ref(false)
+const reloadForReview = async () => {
+  reviewLoaded.value = false
+  await loadData()
+  reviewLoaded.value = dataReady.value
+}
 const saveWaste = async () => {
-  if (
-      !selectedProductId.value ||
-      quantity.value === '' ||
-      !reason.value
-  ) {
-    alert(t('requiredFields'))
-    return
+  if (busy.value || !dataReady.value || wasteStore.needsReview) return
+  if (!selectedProductId.value || quantity.value === '' || !reason.value) { notify('error', 'requiredFields'); return }
+  try {
+    await wasteStore.registerWaste({ productId: selectedProductId.value, quantity: quantity.value, reason: reason.value })
+    selectedProductId.value = ''
+    quantity.value = ''
+    reason.value = ''
+    notify('success', 'wasteSaved')
+  } catch (error) {
+    reviewLoaded.value = false
+    notify('error', error.messageKey || wasteStore.error || 'wasteFailed')
   }
-
-  const product = productsStore.products.find(
-      product => Number(product.id) === Number(selectedProductId.value)
-  )
-
-  if (!product) {
-    alert(t('productNotFound'))
-    return
-  }
-
-  const amount = Number(quantity.value)
-
-  if (amount <= 0) {
-    alert(t('positiveQuantity'))
-    return
-  }
-
-  if (amount > Number(product.stock)) {
-    alert(t('wasteExceedsStock'))
-    return
-  }
-
-  const newStock = Number(product.stock) - amount
-
-  await productsStore.updateProduct(product.id, {
-    ...product,
-    stock: newStock,
-    status: getProductStatus(newStock)
-  })
-
-  await wasteStore.addWaste({
-    productId: product.id,
-    productName: product.name,
-    quantity: amount,
-    reason: reason.value
-  })
-
-  selectedProductId.value = ''
-  quantity.value = ''
-  reason.value = ''
-
-  alert(t('wasteSaved'))
 }
 </script>
 
@@ -89,10 +62,19 @@ const saveWaste = async () => {
         <h1>{{ t('waste') }}</h1>
         <p>{{ t('wasteSubtitle') }}</p>
 
+        <p v-if="loading" role="status">{{ t('loadingData') }}</p>
+        <div v-else-if="loadError" role="alert">
+          <p>{{ t(loadError) }}</p><Button @click="loadData">{{ t('retry') }}</Button>
+        </div>
+        <div v-if="wasteStore.needsReview" role="alert">
+          <p>{{ t('partialWriteWarning') }}</p>
+          <Button @click="reloadForReview" :disabled="loading">{{ t('reloadData') }}</Button>
+          <Button v-if="dataReady && reviewLoaded" @click="wasteStore.needsReview = false">{{ t('reviewCompleted') }}</Button>
+        </div>
         <div class="form">
           <label>{{ t('product') }}</label>
 
-          <select v-model="selectedProductId">
+          <select :disabled="busy || !dataReady || wasteStore.needsReview" v-model="selectedProductId">
             <option value="">{{ t('selectProduct') }}</option>
 
             <option
@@ -106,7 +88,7 @@ const saveWaste = async () => {
 
           <label>{{ t('quantity') }}</label>
 
-          <input
+          <input :disabled="busy || !dataReady || wasteStore.needsReview"
               v-model="quantity"
               type="number"
               :placeholder="t('quantity')"
@@ -114,7 +96,7 @@ const saveWaste = async () => {
 
           <label>{{ t('reason') }}</label>
 
-          <select v-model="reason">
+          <select :disabled="busy || !dataReady || wasteStore.needsReview" v-model="reason">
             <option value="">{{ t('selectReason') }}</option>
 
             <option
@@ -127,7 +109,7 @@ const saveWaste = async () => {
           </select>
 
           <Button
-              class="save-btn"
+              class="save-btn" :disabled="busy || !dataReady || wasteStore.needsReview" :loading="busy"
               @click="saveWaste"
           >
             {{ t('registerWaste') }}
@@ -136,7 +118,7 @@ const saveWaste = async () => {
 
         <h2>{{ t('wasteHistory') }}</h2>
 
-        <table>
+        <table v-if="dataReady">
           <thead>
           <tr>
             <th>{{ t('id') }}</th>

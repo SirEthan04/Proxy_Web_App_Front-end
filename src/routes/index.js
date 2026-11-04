@@ -1,3 +1,4 @@
+import { authenticationGuard } from '../iam/infrastructure/authentication-guard.js'
 import { createRouter, createWebHistory } from 'vue-router'
 
 import Login from '../iam/presentation/Login.vue'
@@ -24,41 +25,50 @@ const routes = [
     },
     {
         path: '/dashboard',
-        component: Dashboard
+        component: Dashboard,
+        meta: { requiresAuth: true }
     },
 
     {
         path: '/products',
-        component: Products
+        component: Products,
+        meta: { requiresAuth: true }
     },
     {
         path: '/products/new',
-        component: NewProduct
+        component: NewProduct,
+        meta: { requiresAuth: true }
     },
     {
         path: '/products/edit/:id',
-        component: EditProduct
+        component: EditProduct,
+        meta: { requiresAuth: true }
     },
 
     {
         path: '/operations',
-        component: Operations
+        component: Operations,
+        meta: { requiresAuth: true }
     },
     {
         path: '/alerts',
-        component: Alerts
+        component: Alerts,
+        meta: { requiresAuth: true }
     },
     {
         path: '/reports',
-        component: Reports
+        component: Reports,
+        meta: { requiresAuth: true }
     },
     {
         path: '/waste',
-        component: Waste
+        component: Waste,
+        meta: { requiresAuth: true }
     },
     {
         path: '/users',
-        component: Users
+        component: Users,
+        meta: { requiresAuth: true }
     },
 
 ]
@@ -67,5 +77,7 @@ const router = createRouter({
     history: createWebHistory(),
     routes
 })
+
+router.beforeEach(authenticationGuard)
 
 export default router

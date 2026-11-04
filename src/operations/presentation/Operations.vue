@@ -1,88 +1,53 @@
 <script setup>
-import Button from 'primevue/button'
 import { t, translateValue } from '../../i18n.js'
-
-import { ref, onMounted } from 'vue'
-
+import { ref, computed, onMounted } from 'vue'
+import Button from 'primevue/button'
+import { useToast } from 'primevue/usetoast'
 import Sidebar from '../../shared/presentation/components/Sidebar.vue'
 import Header from '../../shared/presentation/components/Header.vue'
-
 import { useProductsStore } from '../../inventory/application/products.js'
 import { useOperationsStore } from '../application/operations.js'
 import { OPERATION_TYPES } from '../domain/operation.js'
-import { getProductStatus } from '../../inventory/domain/product.js'
 
 const productsStore = useProductsStore()
 const operationsStore = useOperationsStore()
-
-const selectedProductId = ref('')
-const operationType = ref('')
-const quantity = ref('')
-
-onMounted(async () => {
-  await productsStore.loadProducts()
-  await operationsStore.loadOperations()
+const toast = useToast()
+const notify = (severity, key) => toast.add({
+  severity,
+  summary: t(severity === 'success' ? 'successTitle' : 'errorTitle'),
+  detail: t(key),
+  life: severity === 'success' ? 4000 : 8000
 })
-
+const selectedProductId = ref('')
+const quantity = ref('')
+const operationType = ref('')
+const busy = computed(() => operationsStore.submitting || operationsStore.saving || productsStore.saving)
+const loading = computed(() => productsStore.loading || operationsStore.loading)
+const loadError = computed(() => productsStore.loadError || operationsStore.loadError)
+const dataReady = computed(() => !loading.value && !loadError.value)
+const loadData = async () => {
+  await Promise.allSettled([productsStore.loadProducts(), operationsStore.loadOperations()])
+}
+onMounted(loadData)
+const reviewLoaded = ref(false)
+const reloadForReview = async () => {
+  reviewLoaded.value = false
+  await loadData()
+  reviewLoaded.value = dataReady.value
+}
 const saveOperation = async () => {
-  if (
-      !selectedProductId.value ||
-      !operationType.value ||
-      quantity.value === ''
-  ) {
-    alert(t('requiredFields'))
-    return
+  if (busy.value || !dataReady.value || operationsStore.needsReview) return
+  if (!selectedProductId.value || quantity.value === '' || !operationType.value) { notify('error', 'requiredFields'); return }
+  try {
+    await operationsStore.registerOperation({ productId: selectedProductId.value, quantity: quantity.value, type: operationType.value })
+    selectedProductId.value = ''
+    quantity.value = ''
+    operationType.value = ''
+    notify('success', 'operationSaved')
+  } catch (error) {
+    reviewLoaded.value = false
+    notify('error', error.messageKey || operationsStore.error || 'operationFailed')
   }
-
-  const product = productsStore.products.find(
-      product => Number(product.id) === Number(selectedProductId.value)
-  )
-
-  if (!product) {
-    alert(t('productNotFound'))
-    return
-  }
-
-  const amount = Number(quantity.value)
-
-  if (amount <= 0) {
-    alert(t('positiveQuantity'))
-    return
-  }
-
-  let newStock = Number(product.stock)
-
-  if (operationType.value === OPERATION_TYPES.ENTRY) {
-    newStock += amount
-  }
-
-  if (operationType.value === OPERATION_TYPES.EXIT) {
-    if (amount > Number(product.stock)) {
-      alert(t('insufficientStock'))
-      return
-    }
-
-    newStock -= amount
-  }
-
-  await productsStore.updateProduct(product.id, {
-    ...product,
-    stock: newStock,
-    status: getProductStatus(newStock)
-  })
-
-  await operationsStore.addOperation({
-    productId: product.id,
-    productName: product.name,
-    type: operationType.value,
-    quantity: amount
-  })
-
-  selectedProductId.value = ''
-  operationType.value = ''
-  quantity.value = ''
-
-  alert(t('operationSaved'))
 }
 </script>
 
@@ -97,10 +62,19 @@ const saveOperation = async () => {
         <h1>{{ t('operations') }}</h1>
         <p>{{ t('operationsSubtitle') }}</p>
 
+        <p v-if="loading" role="status">{{ t('loadingData') }}</p>
+        <div v-else-if="loadError" role="alert">
+          <p>{{ t(loadError) }}</p><Button @click="loadData">{{ t('retry') }}</Button>
+        </div>
+        <div v-if="operationsStore.needsReview" role="alert">
+          <p>{{ t('partialWriteWarning') }}</p>
+          <Button @click="reloadForReview" :disabled="loading">{{ t('reloadData') }}</Button>
+          <Button v-if="dataReady && reviewLoaded" @click="operationsStore.needsReview = false">{{ t('reviewCompleted') }}</Button>
+        </div>
         <div class="form">
           <label>{{ t('product') }}</label>
 
-          <select v-model="selectedProductId">
+          <select :disabled="busy || !dataReady || operationsStore.needsReview" v-model="selectedProductId">
             <option value="">{{ t('selectProduct') }}</option>
 
             <option
@@ -114,7 +88,7 @@ const saveOperation = async () => {
 
           <label>{{ t('operationType') }}</label>
 
-          <select v-model="operationType">
+          <select :disabled="busy || !dataReady || operationsStore.needsReview" v-model="operationType">
             <option value="">{{ t('selectOperation') }}</option>
 
             <option :value="OPERATION_TYPES.ENTRY">
@@ -128,14 +102,14 @@ const saveOperation = async () => {
 
           <label>{{ t('quantity') }}</label>
 
-          <input
+          <input :disabled="busy || !dataReady || operationsStore.needsReview"
               v-model="quantity"
               type="number"
               :placeholder="t('quantity')"
           >
 
           <Button
-              class="save-btn"
+              class="save-btn" :disabled="busy || !dataReady || operationsStore.needsReview" :loading="busy"
               @click="saveOperation"
           >
             {{ t('registerOperation') }}
@@ -144,7 +118,7 @@ const saveOperation = async () => {
 
         <h2>{{ t('operationHistory') }}</h2>
 
-        <table>
+        <table v-if="dataReady">
           <thead>
           <tr>
             <th>{{ t('id') }}</th>

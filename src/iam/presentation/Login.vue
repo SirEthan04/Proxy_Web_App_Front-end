@@ -2,36 +2,38 @@
 import Button from 'primevue/button'
 import InputText from 'primevue/inputtext'
 import { t } from '../../i18n.js'
-
-import { ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { ref, onMounted } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import { useToast } from 'primevue/usetoast'
 import { useAuthStore } from '../application/auth.js'
 
 const router = useRouter()
+const route = useRoute()
 const authStore = useAuthStore()
-
+const toast = useToast()
 const email = ref('')
 const password = ref('')
-
-const login = () => {
-  if (!email.value || !password.value) {
-    alert(t('requiredFields'))
-    return
-  }
-
-  const success = authStore.login(
-      email.value,
-      password.value
-  )
-
-  if (!success) {
-    alert(t('invalidCredentials'))
-    return
-  }
-
-  router.push('/dashboard')
+const submitting = ref(false)
+const showError = key => toast.add({ severity: 'error', summary: t('errorTitle'), detail: t(key), life: 8000 })
+onMounted(() => { if (authStore.error) showError(authStore.error) })
+const login = async () => {
+  if (submitting.value) return
+  if (!email.value || !password.value) { showError('requiredFields'); return }
+  submitting.value = true
+  try {
+    if (!authStore.login(email.value, password.value)) { showError(authStore.error); return }
+    password.value = ''
+    const destination = route.query.redirect
+    let target = '/dashboard'
+    if (typeof destination === 'string' && destination.startsWith('/') && !destination.startsWith('//')) {
+      const resolved = router.resolve(destination)
+      if (resolved.matched.length && resolved.meta.requiresAuth) target = resolved.fullPath
+    }
+    await router.replace(target)
+  } finally { submitting.value = false }
 }
-</script>¿
+</script>
+
 <template>
   <div class="login-page">
 
@@ -61,7 +63,8 @@ const login = () => {
             type="password"
             placeholder="********" />
 
-        <Button type="submit">
+        <p>{{ t('demoAuthNotice') }}</p>
+        <Button type="submit" :disabled="submitting" :loading="submitting">
           {{ t('loginSubmit') }}
         </Button>
 

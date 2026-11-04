@@ -1,46 +1,42 @@
 <script setup>
-import Button from 'primevue/button'
-import InputText from 'primevue/inputtext'
 import { t } from '../../i18n.js'
-
-import { ref } from 'vue'
-import { useRouter } from 'vue-router'
-import { getProductStatus } from '../domain/product.js'
+import { ref, computed } from 'vue'
+import Button from 'primevue/button'
+import { useToast } from 'primevue/usetoast'
 import Sidebar from '../../shared/presentation/components/Sidebar.vue'
 import Header from '../../shared/presentation/components/Header.vue'
+import InputText from 'primevue/inputtext'
+import { useRouter } from 'vue-router'
 import { useProductsStore } from '../application/products.js'
+import { getProductStatus } from '../domain/product.js'
 
 const router = useRouter()
 const productsStore = useProductsStore()
-
+const toast = useToast()
+const notify = (severity, key) => toast.add({
+  severity,
+  summary: t(severity === 'success' ? 'successTitle' : 'errorTitle'),
+  detail: t(key),
+  life: severity === 'success' ? 4000 : 8000
+})
 const name = ref('')
 const category = ref('')
 const price = ref('')
 const stock = ref('')
 const expirationDate = ref('')
+const busy = computed(() => productsStore.saving)
 
 const saveProduct = async () => {
-  if (
-      !name.value ||
-      !category.value ||
-      price.value === '' ||
-      stock.value === '' ||
-      !expirationDate.value
-  ) {
-    alert(t('requiredFields'))
-    return
-  }
-
-  await productsStore.addProduct({
-    name: name.value,
-    category: category.value,
-    price: Number(price.value),
-    stock: Number(stock.value),
-    expirationDate: expirationDate.value,
-    status: getProductStatus(Number(stock.value))
-  })
-
-  router.push('/products')
+  if (busy.value) return
+  if (!name.value || !category.value || price.value === '' || stock.value === '' || !expirationDate.value) { notify('error', 'requiredFields'); return }
+  try {
+    await productsStore.addProduct({
+      name: name.value, category: category.value, price: Number(price.value), stock: Number(stock.value),
+      expirationDate: expirationDate.value, status: getProductStatus(Number(stock.value))
+    })
+    notify('success', 'productCreated')
+    await router.push('/products')
+  } catch (error) { notify('error', error.messageKey || productsStore.error || 'createProductFailed') }
 }
 </script>
 
@@ -56,13 +52,13 @@ const saveProduct = async () => {
 
         <div class="form">
           <label>{{ t('name') }}</label>
-          <InputText
+          <InputText :disabled="busy"
               v-model="name"
               type="text"
               :placeholder="t('productName')" />
 
           <label>{{ t('category') }}</label>
-          <select v-model="category">
+          <select v-model="category" :disabled="busy">
             <option value="">{{ t('selectCategory') }}</option>
             <option value="Bebidas">{{ t('beverages') }}</option>
             <option value="Lácteos">{{ t('dairy') }}</option>
@@ -76,28 +72,28 @@ const saveProduct = async () => {
           </select>
 
           <label>{{ t('price') }}</label>
-          <input
+          <input :disabled="busy"
               v-model="price"
               type="number"
               :placeholder="t('price')"
           >
 
           <label>{{ t('stock') }}</label>
-          <input
+          <input :disabled="busy"
               v-model="stock"
               type="number"
               :placeholder="t('stock')"
           >
 
           <label>{{ t('expirationDate') }}</label>
-          <input
+          <input :disabled="busy"
               v-model="expirationDate"
               type="date"
           >
 
           <div class="buttons">
             <Button
-                class="cancel-btn"
+                class="cancel-btn" :disabled="busy"
                 @click="router.push('/products')"
             >
               {{ t('cancel') }}
@@ -105,6 +101,7 @@ const saveProduct = async () => {
 
             <Button
                 class="save-btn"
+                :disabled="busy" :loading="busy"
                 @click="saveProduct"
             >
               {{ t('saveProduct') }}
