@@ -1,3 +1,4 @@
+import ProductDetails from '../inventory/presentation/ProductDetails.vue'
 import { PERMISSIONS } from '../iam/domain/permissions.js'
 import AccessDenied from '../iam/presentation/AccessDenied.vue'
 import { authenticationGuard } from '../iam/infrastructure/authentication-guard.js'
@@ -17,6 +18,7 @@ import Alerts from '../monitoring/presentation/Alerts.vue'
 import Reports from '../reporting/presentation/Reports.vue'
 
 const routes = [
+    { path: '/products/:id', component: ProductDetails, meta: { requiresAuth: true, permission: PERMISSIONS.PRODUCTS_READ } },
     { path: '/access-denied', component: AccessDenied, meta: { requiresAuth: true } },
     {
         path: '/',

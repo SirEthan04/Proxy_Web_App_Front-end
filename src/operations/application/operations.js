@@ -3,7 +3,7 @@ import { defineStore } from 'pinia'
 import { getOperations, createOperation } from '../infrastructure/operation-api.js'
 import { useProductsStore } from '../../inventory/application/products.js'
 import { getProductStatus } from '../../inventory/domain/product.js'
-import { OPERATION_TYPES } from '../domain/operation.js'
+import { previewOperation } from '../domain/stock-change.js'
 
 const pendingLoads = new WeakMap()
 
@@ -61,28 +61,32 @@ export const useOperationsStore = defineStore('operations', {
         this.saving = false
       }
     },
-    async registerOperation({ productId, quantity, type }) {
+    async registerOperation({ productId, quantity, type, expectedStock }) {
       const products = useProductsStore()
-      if (this.submitting || products.saving) throw Object.assign(new Error('Write in progress'), { messageKey: 'requestInProgress' })
-      if (this.needsReview) throw Object.assign(new Error('Review required'), { messageKey: 'partialWriteWarning' })
-      const product = products.products.find(item => Number(item.id) === Number(productId))
       const fail = key => { throw Object.assign(new Error(key), { messageKey: key }) }
-      if (!product) fail('productNotFound')
-      const amount = Number(quantity)
-      if (quantity === '' || !Number.isFinite(amount) || amount <= 0) fail('positiveQuantity')
-      if (!Object.values(OPERATION_TYPES).includes(type)) fail('requiredFields')
-      if (type === OPERATION_TYPES.EXIT && amount > Number(product.stock)) fail('insufficientStock')
-      const newStock = Number(product.stock) + (type === OPERATION_TYPES.ENTRY ? amount : -amount)
+      if (this.submitting || this.saving || products.saving) fail('requestInProgress')
+      if (this.needsReview) fail('partialWriteWarning')
       this.submitting = true
       this.error = null
+      let stockAttempted = false
       let stockUpdated = false
       try {
-        await products.updateProduct(product.id, { ...product, stock: newStock, status: getProductStatus(newStock) })
+        // One fresh read at confirmation, before the definitive domain validation.
+        await products.loadProducts()
+        const product = products.products.find(item => String(item.id) === String(productId))
+        if (!product) fail('productNotFound')
+        if (expectedStock !== undefined && Number(product.stock) !== Number(expectedStock)) fail('stockChangedReview')
+        const result = previewOperation(product.stock, quantity, type)
+        if (!result.valid) fail(result.errorKey)
+        stockAttempted = true
+        await products.updateProduct(product.id, { ...product, stock: result.stockAfter, status: getProductStatus(result.stockAfter) })
         stockUpdated = true
-        return await this.addOperation({ productId: product.id, productName: product.name, quantity: amount, type })
+        return await this.addOperation({ productId: product.id, productName: product.name, quantity: result.quantity, type })
       } catch (error) {
-        // A lost response may also mean that the stock update reached the server.
-        if (stockUpdated || !error.response) {
+        // Read/validation failures are not partial writes. Lost responses and 5xx after
+        // a stock attempt are uncertain; never retry them automatically.
+        const uncertainStock = stockAttempted && !error.messageKey && (!error.response || error.response.status >= 500)
+        if (stockUpdated || uncertainStock) {
           this.needsReview = true
           error.messageKey = 'partialWriteWarning'
         }
