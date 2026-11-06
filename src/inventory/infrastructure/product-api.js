@@ -1,8 +1,4 @@
-import axios from 'axios'
-
-const api = axios.create({
-    baseURL: 'https://6ac6bb3dbea0e72cf5c93893.mockapi.io'
-})
+import { catalogApi as api } from '../../shared/infrastructure/http-client.js'
 
 export const getProducts = () => {
     return api.get('/products')
@@ -13,9 +9,9 @@ export const createProduct = (product) => {
 }
 
 export const updateProduct = (id, product) => {
-    return api.put(`/products/${id}`, product)
+    return api.put(`/products/${encodeURIComponent(String(id))}`, product)
 }
 
 export const deleteProduct = (id) => {
-    return api.delete(`/products/${id}`)
+    return api.delete(`/products/${encodeURIComponent(String(id))}`)
 }

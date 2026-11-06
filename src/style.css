@@ -1,16 +1,1 @@
-* {
-  box-sizing: border-box;
-}
-
-html,
-body,
-#app {
-  margin: 0;
-  min-height: 100%;
-}
-
-body {
-  font-family: Arial, sans-serif;
-  background: #f4f7fb;
-  color: #17233c;
-}
+@import './shared/presentation/styles/ui.css';

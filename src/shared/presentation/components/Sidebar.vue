@@ -1,116 +1,66 @@
 <script setup>
+import { useCommercialStore } from '../../../commercial/application/commercial.js'
+import NavIcon from './NavIcon.vue'
+
+import { PERMISSIONS } from '../../../iam/domain/permissions.js'
 import Button from 'primevue/button'
 import { t } from '../../../i18n.js'
 
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
+import { computed } from 'vue'
+import { useToast } from 'primevue/usetoast'
+import { useProductsStore } from '../../../inventory/application/products.js'
+import { useUsersStore } from '../../../iam/application/users.js'
+import { useOperationsStore } from '../../../operations/application/operations.js'
+import { useWasteStore } from '../../../operations/application/waste.js'
 import { useAuthStore } from '../../../iam/application/auth.js'
 
 const router = useRouter()
+const route = useRoute()
 const authStore = useAuthStore()
 
+const toast = useToast()
+const stores = [useCommercialStore(), useProductsStore(), useUsersStore(), useOperationsStore(), useWasteStore()]
+const busy = computed(() => stores.some(store => store.saving || store.submitting))
 const logout = () => {
+  if (busy.value) return
   authStore.logout()
-  router.push('/login')
+  for (const store of stores) store.clearSessionData()
+  if (authStore.error) toast.add({ severity: 'error', summary: t('errorTitle'), detail: t(authStore.error), life: 8000 })
+  router.replace('/login')
 }
-</script>
 
+const emit = defineEmits(['navigate'])
+const navigationGroups = computed(() => [
+  { label: 'navOverview', items: [
+    { to: '/dashboard', label: 'dashboard', icon: 'home', permission: PERMISSIONS.DASHBOARD_READ }
+  ] },
+  { label: 'navDailyTasks', items: [
+    { to: '/purchases', label: 'commercialPurchases', icon: 'purchase', permission: PERMISSIONS.PURCHASES_READ },
+    { to: '/sales', label: 'commercialSales', icon: 'sale', permission: PERMISSIONS.SALES_READ },
+  ] },
+  { label: 'navMerchandise', items: [
+    { to: '/products', label: 'products', icon: 'box', permission: PERMISSIONS.PRODUCTS_READ },
+    { to: '/operations', label: 'entriesAndExits', icon: 'movement', permission: PERMISSIONS.OPERATIONS_WRITE },
+    { to: '/waste', label: 'waste', icon: 'waste', permission: PERMISSIONS.WASTE_WRITE },
+
+  ] },
+  { label: 'navAdministration', items: [
+    { to: '/alerts', label: 'alerts', icon: 'alert', permission: PERMISSIONS.ALERTS_READ },
+    { to: '/reports', label: 'reporting', icon: 'reports', permission: PERMISSIONS.REPORTS_READ },
+    { to: '/users', label: 'users', icon: 'users', permission: PERMISSIONS.USERS_READ }
+  ] }
+].map(group => ({ ...group, items: group.items.filter(item => authStore.can(item.permission)) })).filter(group => group.items.length))
+</script>
 <template>
   <aside class="sidebar">
-
-    <div class="logo">
-      BodeGo
-    </div>
-
-    <nav>
-      <router-link to="/dashboard">
-        {{ t('dashboard') }}
-      </router-link>
-
-      <router-link to="/products">
-        {{ t('inventory') }}
-      </router-link>
-
-      <router-link to="/operations">
-        {{ t('operations') }}
-      </router-link>
-
-      <router-link to="/alerts">
-        {{ t('monitoring') }}
-      </router-link>
-
-      <router-link to="/reports">
-        {{ t('reporting') }}
-      </router-link>
-
-      <router-link to="/waste">
-        {{ t('waste') }}
-      </router-link>
-      <router-link to="/users">
-        {{ t('users') }}
-      </router-link>
+    <router-link class="brand" to="/dashboard" @click="emit('navigate')"><span class="brand-mark"><NavIcon name="box" /></span><span>Bode<span class="brand-go">Go</span><small>{{ t('yourStoreOrganized') }}</small></span></router-link>
+    <nav :aria-label="t('navigation')">
+      <div v-for="group in navigationGroups" :key="group.label" class="nav-group">
+        <p class="nav-group-label">{{ t(group.label) }}</p>
+        <router-link v-for="item in group.items" :key="item.to" :to="item.to" :class="{ 'nav-item-active': route.path === item.to || route.path.startsWith(item.to + '/') }" @click="emit('navigate')"><NavIcon :name="item.icon" /><span>{{ t(item.label) }}</span></router-link>
+      </div>
     </nav>
-
-    <Button
-        class="logout"
-        @click="logout"
-    >
-      {{ t('logout') }}
-    </Button>
-
+    <div class="sidebar-bottom"><p>{{ t('demoWorkspace') }}</p><Button class="logout" :disabled="busy" @click="logout"><NavIcon name="logout" />{{ t('logout') }}</Button></div>
   </aside>
 </template>
-
-<style scoped>
-.sidebar {
-  width: 220px;
-  min-height: 100vh;
-  background: #0f2942;
-  color: white;
-  padding: 20px;
-
-  display: flex;
-  flex-direction: column;
-}
-
-.logo {
-  font-size: 24px;
-  font-weight: bold;
-  margin-bottom: 30px;
-}
-
-nav {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-nav a {
-  color: #dbe5ef;
-  text-decoration: none;
-  padding: 10px;
-  border-radius: 6px;
-}
-
-nav a:hover {
-  background: #1a3c5a;
-}
-
-.router-link-active {
-  background: #168cff;
-  color: white;
-}
-
-.logout {
-  margin-top: auto;
-  background: transparent;
-  border: none;
-  color: #dbe5ef;
-  padding: 10px;
-  text-align: left;
-  cursor: pointer;
-}
-
-.logout:hover {
-  color: white;
-}
-</style>

@@ -1,72 +1,41 @@
 <script setup>
+import { computed } from 'vue'
+import Button from 'primevue/button'
 import { t, translateValue } from '../../../i18n.js'
-
 import { useAuthStore } from '../../../iam/application/auth.js'
 import LanguageSwitcher from './language-switcher.vue'
-
+import NavIcon from './NavIcon.vue'
+defineProps({ compact: Boolean, menuOpen: Boolean })
+defineEmits(['toggle-menu'])
 const authStore = useAuthStore()
+const initials = computed(() => (authStore.user?.name || t('user')).split(' ').filter(Boolean).slice(0, 2).map(name => name[0]).join(''))
 </script>
-
 <template>
-  <header class="header">
-
-    <LanguageSwitcher />
-
-    <div class="user">
-      <div>
-        <strong>
-          {{ authStore.user?.name || t('user') }}
-        </strong>
-
-        <span>
-          {{ translateValue(authStore.user?.role) || t('noRole') }}
-        </span>
-      </div>
-
-      <div class="avatar">
-        JP
+  <header class="app-header">
+    <div class="header-start">
+      <Button
+        v-if="compact"
+        class="menu-button"
+        severity="secondary"
+        text
+        :aria-label="t('openNavigation')"
+        :aria-expanded="menuOpen"
+        aria-controls="bodego-navigation"
+        @click="$emit('toggle-menu')"
+      >
+        <NavIcon name="menu" />
+      </Button>
+      <span class="workspace-label">{{ t('workspace') }}</span>
+    </div>
+    <div class="header-end">
+      <LanguageSwitcher />
+      <div class="user">
+        <div class="user-copy">
+          <strong>{{ authStore.user?.name || t('user') }}</strong>
+          <span>{{ translateValue(authStore.user?.role) || t('noRole') }}</span>
+        </div>
+        <span class="avatar" aria-hidden="true">{{ initials }}</span>
       </div>
     </div>
-
   </header>
 </template>
-
-<style scoped>
-.header {
-  height: 70px;
-  background: white;
-  border-bottom: 1px solid #e2e8f0;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0 30px;
-}
-
-.user {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.user div:first-child {
-  display: flex;
-  flex-direction: column;
-  text-align: right;
-}
-
-.user span {
-  font-size: 12px;
-  color: #64748b;
-}
-
-.avatar {
-  width: 40px;
-  height: 40px;
-  background: #168cff;
-  color: white;
-  border-radius: 50%;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-}
-</style>

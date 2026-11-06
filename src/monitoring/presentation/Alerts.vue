@@ -1,275 +1,41 @@
 <script setup>
-import { t } from '../../i18n.js'
-
-import { computed, onMounted } from 'vue'
-
-import Sidebar from '../../shared/presentation/components/Sidebar.vue'
-import Header from '../../shared/presentation/components/Header.vue'
+import { useAuthStore } from '../../iam/application/auth.js'
+import { PERMISSIONS } from '../../iam/domain/permissions.js'
+import { computed, ref, onMounted } from 'vue'
+import Button from 'primevue/button'
+import InputText from 'primevue/inputtext'
+import { t, translateValue } from '../../i18n.js'
+import AppLayout from '../../shared/presentation/layouts/AppLayout.vue'
+import PageHeader from '../../shared/presentation/components/PageHeader.vue'
+import RequestState from '../../shared/presentation/components/RequestState.vue'
 import { useProductsStore } from '../../inventory/application/products.js'
-
-import {
-  getOutOfStockProducts,
-  getLowStockProducts,
-  getExpiredProducts,
-  getExpiringProducts
-} from '../application/alerts.js'
-
-const productsStore = useProductsStore()
-
-onMounted(async () => {
-  await productsStore.loadProducts()
-})
-
-const outOfStockProducts = computed(() => {
-  return getOutOfStockProducts(productsStore.products)
-})
-
-const lowStockProducts = computed(() => {
-  return getLowStockProducts(productsStore.products)
-})
-
-const expiredProducts = computed(() => {
-  return getExpiredProducts(productsStore.products)
-})
-
-const expiringProducts = computed(() => {
-  return getExpiringProducts(productsStore.products)
-})
+import { getOutOfStockProducts, getLowStockProducts, getExpiredProducts, getExpiringProducts } from '../application/alerts.js'
+const auth = useAuthStore()
+const products = useProductsStore()
+const selectedCategory = ref('all')
+const search = ref('')
+const groups = computed(() => [
+  { key: 'expired', label: 'expired', tone: 'danger', products: getExpiredProducts(products.products) },
+  { key: 'empty', label: 'outOfStock', tone: 'danger', products: getOutOfStockProducts(products.products) },
+  { key: 'expiring', label: 'expiringSoon', tone: 'warning', products: getExpiringProducts(products.products) },
+  { key: 'low', label: 'lowStock', tone: 'warning', products: getLowStockProducts(products.products) }
+])
+const alerts = computed(() => groups.value.flatMap(group => group.products.map(product => ({ kind: group.key, label: group.label, tone: group.tone, product }))))
+const normalize = value => String(value ?? '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim()
+const filteredAlerts = computed(() => alerts.value.filter(alert => (selectedCategory.value === 'all' || selectedCategory.value === alert.kind) && [alert.product.id, alert.product.name, alert.product.category].some(value => normalize(value).includes(normalize(search.value)))))
+const loadData = async () => { try { await products.loadProducts() } catch { /* RequestState shows errors. */ } }
+onMounted(loadData)
 </script>
-
 <template>
-  <div class="page">
-    <Sidebar />
-
-    <main class="main-content">
-      <Header />
-
-      <div class="content">
-        <h1>{{ t('alerts') }}</h1>
-        <p>{{ t('alertsSubtitle') }}</p>
-
-        <div class="alerts-grid">
-
-          <div class="alert-card danger">
-            <h2>{{ t('outOfStock') }}</h2>
-            <p class="number">
-              {{ outOfStockProducts.length }}
-            </p>
-          </div>
-
-          <div class="alert-card warning">
-            <h2>{{ t('lowStock') }}</h2>
-            <p class="number">
-              {{ lowStockProducts.length }}
-            </p>
-          </div>
-
-          <div class="alert-card orange">
-            <h2>{{ t('expiringSoon') }}</h2>
-            <p class="number">
-              {{ expiringProducts.length }}
-            </p>
-          </div>
-
-          <div class="alert-card expired">
-            <h2>{{ t('expired') }}</h2>
-            <p class="number">
-              {{ expiredProducts.length }}
-            </p>
-          </div>
-
-        </div>
-
-        <h2>{{ t('outOfStockProducts') }}</h2>
-
-        <table>
-          <thead>
-          <tr>
-            <th>{{ t('product') }}</th>
-            <th>{{ t('stock') }}</th>
-            <th>{{ t('status') }}</th>
-          </tr>
-          </thead>
-
-          <tbody>
-          <tr
-              v-for="product in outOfStockProducts"
-              :key="product.id"
-          >
-            <td>{{ product.name }}</td>
-            <td>{{ product.stock }}</td>
-            <td>{{ t('outOfStock') }}</td>
-          </tr>
-
-          <tr v-if="outOfStockProducts.length === 0">
-            <td colspan="3" class="empty">
-              {{ t('noOutOfStock') }}
-            </td>
-          </tr>
-          </tbody>
-        </table>
-
-        <h2>{{ t('lowStockProducts') }}</h2>
-
-        <table>
-          <thead>
-          <tr>
-            <th>{{ t('product') }}</th>
-            <th>{{ t('stock') }}</th>
-            <th>{{ t('status') }}</th>
-          </tr>
-          </thead>
-
-          <tbody>
-          <tr
-              v-for="product in lowStockProducts"
-              :key="product.id"
-          >
-            <td>{{ product.name }}</td>
-            <td>{{ product.stock }}</td>
-            <td>{{ t('lowStock') }}</td>
-          </tr>
-
-          <tr v-if="lowStockProducts.length === 0">
-            <td colspan="3" class="empty">
-              {{ t('noLowStock') }}
-            </td>
-          </tr>
-          </tbody>
-        </table>
-
-        <h2>{{ t('expiringProducts') }}</h2>
-
-        <table>
-          <thead>
-          <tr>
-            <th>{{ t('product') }}</th>
-            <th>{{ t('expirationDate') }}</th>
-          </tr>
-          </thead>
-
-          <tbody>
-          <tr
-              v-for="product in expiringProducts"
-              :key="product.id"
-          >
-            <td>{{ product.name }}</td>
-            <td>{{ product.expirationDate }}</td>
-          </tr>
-
-          <tr v-if="expiringProducts.length === 0">
-            <td colspan="2" class="empty">
-              {{ t('noExpiring') }}
-            </td>
-          </tr>
-          </tbody>
-        </table>
-
-        <h2>{{ t('expiredProducts') }}</h2>
-
-        <table>
-          <thead>
-          <tr>
-            <th>{{ t('product') }}</th>
-            <th>{{ t('expirationDate') }}</th>
-          </tr>
-          </thead>
-
-          <tbody>
-          <tr
-              v-for="product in expiredProducts"
-              :key="product.id"
-          >
-            <td>{{ product.name }}</td>
-            <td>{{ product.expirationDate }}</td>
-          </tr>
-
-          <tr v-if="expiredProducts.length === 0">
-            <td colspan="2" class="empty">
-              {{ t('noExpired') }}
-            </td>
-          </tr>
-          </tbody>
-        </table>
-
-      </div>
-    </main>
-  </div>
+  <AppLayout><div class="content">
+    <PageHeader :title="t('alerts')" :description="t('alertsInteractiveHint')"><template #actions><Button class="cancel-btn" :disabled="products.loading" @click="loadData">{{ t('refreshData') }}</Button></template></PageHeader>
+    <RequestState :loading="products.loading" :error="products.loadError" @retry="loadData" />
+    <template v-if="!products.loading && !products.loadError">
+      <div class="alert-filter-buttons" role="group" :aria-label="t('filterAlerts')"><Button severity="secondary" :outlined="selectedCategory !== 'all'" :aria-pressed="selectedCategory === 'all'" @click="selectedCategory = 'all'">{{ t('allAlerts') }} ({{ alerts.length }})</Button><Button v-for="group in groups" :key="group.key" :severity="group.tone" :outlined="selectedCategory !== group.key" :aria-pressed="selectedCategory === group.key" :data-alert-category="group.key" @click="selectedCategory = group.key">{{ t(group.label) }} ({{ group.products.length }})</Button></div>
+      <div class="panel field"><label for="alert-search">{{ t('searchProduct') }}</label><InputText id="alert-search" v-model="search" type="search" :placeholder="t('searchByAvailableFields')" /></div>
+      <p class="results-summary" aria-live="polite">{{ t('alertResultCount', { count: filteredAlerts.length }) }}</p>
+      <div v-if="filteredAlerts.length" class="table-scroll" role="region" :aria-label="t('alerts')" tabindex="0"><table><thead><tr><th>{{ t('alertCategory') }}</th><th>{{ t('product') }}</th><th>{{ t('stock') }}</th><th>{{ t('expirationDate') }}</th><th>{{ t('actions') }}</th></tr></thead><tbody><tr v-for="alert in filteredAlerts" :key="alert.kind + ':' + alert.product.id"><td><span class="status-pill" :class="'status-' + alert.tone">{{ t(alert.label) }}</span></td><td>{{ alert.product.name }}<small v-if="alert.kind === 'low'" class="cell-secondary">{{ t('remainingUnits', { stock: alert.product.stock, name: alert.product.name }) }}</small><small class="cell-secondary">{{ translateValue(alert.product.category) }}</small></td><td>{{ alert.product.stock }}</td><td>{{ alert.product.expirationDate || t('notAvailable') }}</td><td><router-link class="inline-action" :to="'/products/' + alert.product.id">{{ t('viewProduct') }}</router-link><router-link v-if="auth.can(PERMISSIONS.PURCHASES_CREATE)" class="inline-action" to="/purchases/new">{{ t('commercialNewPurchase') }}</router-link></td></tr></tbody></table></div>
+      <p v-else class="panel empty" role="status">{{ t(alerts.length ? 'noFilteredAlerts' : 'noAlerts') }}</p>
+    </template>
+  </div></AppLayout>
 </template>
-
-<style scoped>
-.page {
-  display: flex;
-}
-
-.main-content {
-  flex: 1;
-}
-
-.content {
-  padding: 30px;
-}
-
-.alerts-grid {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 15px;
-  margin: 25px 0;
-}
-
-.alert-card {
-  padding: 20px;
-  border-radius: 8px;
-  color: white;
-}
-
-.alert-card h2 {
-  margin: 0;
-  font-size: 18px;
-}
-
-.number {
-  font-size: 30px;
-  font-weight: bold;
-  margin: 10px 0 0;
-}
-
-.danger {
-  background-color: #dc2626;
-}
-
-.warning {
-  background-color: #eab308;
-}
-
-.orange {
-  background-color: #f97316;
-}
-
-.expired {
-  background-color: #7f1d1d;
-}
-
-table {
-  width: 100%;
-  border-collapse: collapse;
-  background-color: white;
-  margin-bottom: 35px;
-}
-
-th,
-td {
-  padding: 12px;
-  border-bottom: 1px solid #ddd;
-  text-align: left;
-}
-
-th {
-  background-color: #f3f4f6;
-}
-
-.empty {
-  text-align: center;
-  padding: 20px;
-}
-</style>

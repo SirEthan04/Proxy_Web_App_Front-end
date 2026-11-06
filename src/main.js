@@ -1,8 +1,9 @@
+import ConfirmationService from 'primevue/confirmationservice'
+import ToastService from 'primevue/toastservice'
 import { createApp } from 'vue'
 import { createPinia } from 'pinia'
 import PrimeVue from 'primevue/config'
 import Aura from '@primeuix/themes/aura'
-import { useAuthStore } from './iam/application/auth.js'
 
 import App from './App.vue'
 import router from './routes'
@@ -13,6 +14,8 @@ import './style.css'
 const app = createApp(App)
 const pinia = createPinia()
 app.use(pinia)
+app.use(ToastService)
+app.use(ConfirmationService)
 app.use(PrimeVue, {
   theme: {
     preset: Aura,
@@ -22,7 +25,6 @@ app.use(PrimeVue, {
     },
   },
 })
-useAuthStore(pinia).loadUser()
 app.use(router)
 app.use(i18n)
 
