@@ -1,8 +1,8 @@
 import { useAuthStore } from '../application/auth.js'
 
-export function authenticationGuard(to) {
+export async function authenticationGuard(to) {
   const auth = useAuthStore()
-  if (!auth.initialized) auth.loadUser()
+  if (!auth.initialized) await auth.loadUser()
   if (to.meta.requiresAuth && !auth.isAuthenticated) {
     return { path: '/login', query: { redirect: to.fullPath }, replace: true }
   }

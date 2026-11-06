@@ -13,13 +13,13 @@ export const useAuthStore = defineStore('auth', {
     requirePermission(permission) {
       if (!this.can(permission)) throw Object.assign(new Error('Access denied'), { messageKey: 'accessDeniedMessage' })
     },
-    loadUser() {
+    async loadUser() {
       this.user = null
       this.error = null
       try {
         const saved = localStorage.getItem('user')
         if (saved) {
-          const user = validateDemoSession(JSON.parse(saved))
+          const user = await validateDemoSession(JSON.parse(saved))
           if (!user) throw new Error('Invalid demo session')
           // Sanitize sessions created by the previous demo implementation.
           localStorage.setItem('user', JSON.stringify(user))
@@ -32,9 +32,15 @@ export const useAuthStore = defineStore('auth', {
         this.initialized = true
       }
     },
-    login(email, password) {
+    async login(email, password) {
       this.error = null
-      const user = authenticateDemoUser(email, password)
+      let user
+      try { user = await authenticateDemoUser(email, password) }
+      catch {
+        this.user = null
+        this.error = 'loginServiceUnavailable'
+        return false
+      }
       if (!user) {
         this.error = 'invalidCredentials'
         return false

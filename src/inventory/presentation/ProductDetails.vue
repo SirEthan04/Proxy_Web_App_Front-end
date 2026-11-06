@@ -3,6 +3,7 @@ import { computed, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import Button from 'primevue/button'
 import { t, translateValue } from '../../i18n.js'
+import { formatSoles } from '../../shared/presentation/utils/currency.js'
 import { useProductsStore } from '../application/products.js'
 import AppLayout from '../../shared/presentation/layouts/AppLayout.vue'
 import PageHeader from '../../shared/presentation/components/PageHeader.vue'
@@ -30,7 +31,7 @@ watch(() => route.params.id, () => { if (!product.value || products.loadError) l
         </div>
         <dl class="product-detail-grid">
           <div>
-            <dt>{{ t('id') }}</dt>
+            <dt>{{ t('technicalProductId') }}</dt>
             <dd>{{ product.id }}</dd>
           </div>
           <div>
@@ -39,7 +40,7 @@ watch(() => route.params.id, () => { if (!product.value || products.loadError) l
           </div>
           <div>
             <dt>{{ t('price') }}</dt>
-            <dd>{{ product.price === null || product.price === undefined ? t('notAvailable') : 'S/ ' + product.price }}</dd>
+            <dd>{{ formatSoles(product.price) }}</dd>
           </div>
           <div>
             <dt>{{ t('stock') }}</dt>

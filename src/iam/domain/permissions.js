@@ -1,5 +1,9 @@
 // Demo authorization policy. The future backend must enforce these permissions.
 export const PERMISSIONS = Object.freeze({
+  PURCHASES_CREATE: 'purchases.create',
+  PURCHASES_READ: 'purchases.read',
+  SALES_CREATE: 'sales.create',
+  SALES_READ: 'sales.read',
   DASHBOARD_READ: 'dashboard.read',
   PRODUCTS_READ: 'products.read',
   PRODUCTS_CREATE: 'products.create',
@@ -15,6 +19,10 @@ export const PERMISSIONS = Object.freeze({
 const rolePermissions = Object.freeze({
   Administrador: Object.freeze(Object.values(PERMISSIONS)),
   Empleado: Object.freeze([
+    PERMISSIONS.PURCHASES_CREATE,
+    PERMISSIONS.PURCHASES_READ,
+    PERMISSIONS.SALES_CREATE,
+    PERMISSIONS.SALES_READ,
     PERMISSIONS.DASHBOARD_READ,
     PERMISSIONS.PRODUCTS_READ,
     PERMISSIONS.OPERATIONS_WRITE,

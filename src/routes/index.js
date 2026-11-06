@@ -1,3 +1,8 @@
+import Purchases from '../commercial/presentation/Purchases.vue'
+import Sales from '../commercial/presentation/Sales.vue'
+import NewPurchase from '../commercial/presentation/NewPurchase.vue'
+import NewSale from '../commercial/presentation/NewSale.vue'
+import CommercialDetails from '../commercial/presentation/CommercialDetails.vue'
 import ProductDetails from '../inventory/presentation/ProductDetails.vue'
 import { PERMISSIONS } from '../iam/domain/permissions.js'
 import AccessDenied from '../iam/presentation/AccessDenied.vue'
@@ -18,6 +23,12 @@ import Alerts from '../monitoring/presentation/Alerts.vue'
 import Reports from '../reporting/presentation/Reports.vue'
 
 const routes = [
+    { path: '/purchases', component: Purchases, meta: { requiresAuth: true, permission: PERMISSIONS.PURCHASES_READ } },
+    { path: '/purchases/new', component: NewPurchase, meta: { requiresAuth: true, permission: PERMISSIONS.PURCHASES_CREATE } },
+    { path: '/purchases/:id', component: CommercialDetails, props: { kind: 'purchase' }, meta: { requiresAuth: true, permission: PERMISSIONS.PURCHASES_READ } },
+    { path: '/sales', component: Sales, meta: { requiresAuth: true, permission: PERMISSIONS.SALES_READ } },
+    { path: '/sales/new', component: NewSale, meta: { requiresAuth: true, permission: PERMISSIONS.SALES_CREATE } },
+    { path: '/sales/:id', component: CommercialDetails, props: { kind: 'sale' }, meta: { requiresAuth: true, permission: PERMISSIONS.SALES_READ } },
     { path: '/products/:id', component: ProductDetails, meta: { requiresAuth: true, permission: PERMISSIONS.PRODUCTS_READ } },
     { path: '/access-denied', component: AccessDenied, meta: { requiresAuth: true } },
     {

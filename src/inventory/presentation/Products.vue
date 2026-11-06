@@ -1,4 +1,8 @@
 <script setup>
+import { formatSoles } from '../../shared/presentation/utils/currency.js'
+import { sortProducts } from './product-order.js'
+import { useCommercialStore } from '../../commercial/application/commercial.js'
+import { isTerminal } from '../../commercial/domain/commercial-status.js'
 import { getProductStatus } from '../domain/product.js'
 
 import NavIcon from '../../shared/presentation/components/NavIcon.vue'
@@ -21,6 +25,8 @@ import { useToast } from 'primevue/usetoast'
 import { useProductsStore } from '../application/products.js'
 
 const productsStore = useProductsStore()
+const commercial = useCommercialStore()
+const pendingIds = computed(() => new Set([...commercial.purchases, ...commercial.sales].filter(document => !isTerminal(document)).flatMap(document => document.lines.map(line => String(line.productId)))))
 const auth = useAuthStore()
 const confirm = useConfirm()
 const confirmingDelete = ref(false)
@@ -42,18 +48,7 @@ const filteredProducts = computed(() => {
     const matchesStock = stockFilter.value === 'all' || getProductStatus(Number(product.stock)) === stockFilter.value
     return matchesSearch && matchesCategory && matchesStock
   })
-  const collator = new Intl.Collator(locale.value, { sensitivity: 'base', numeric: true })
-  return filtered.sort((a, b) => {
-    const key = sortBy.value
-    let order
-    if (key === 'price' || key === 'stock') {
-      const first = Number(a[key]), second = Number(b[key])
-      if (!Number.isFinite(first)) return Number.isFinite(second) ? 1 : 0
-      if (!Number.isFinite(second)) return -1
-      order = first - second
-    } else order = collator.compare(String(a[key] ?? ''), String(b[key] ?? ''))
-    return sortDirection.value === 'asc' ? order : -order
-  })
+  return sortProducts(filtered, sortBy.value, sortDirection.value, locale.value)
 })
 
 const toast = useToast()
@@ -67,7 +62,7 @@ const loading = computed(() => productsStore.loading)
 const loadError = computed(() => productsStore.loadError)
 const dataReady = computed(() => !loading.value && !loadError.value)
 const loadData = async () => {
-  await Promise.allSettled([productsStore.loadProducts()])
+  await Promise.allSettled([productsStore.loadProducts(), commercial.load('purchase')])
 }
 onMounted(loadData)
 const confirmDeleteProduct = product => {
@@ -102,12 +97,13 @@ const confirmDeleteProduct = product => {
       <div class="field search-field"><label for="product-search">{{ t('searchProduct') }}</label><InputText id="product-search" v-model="search" type="search" :placeholder="t('searchByAvailableFields')" /></div>
       <div class="field"><label for="product-category">{{ t('category') }}</label><select id="product-category" v-model="selectedCategory"><option value="Todas">{{ t('allCategories') }}</option><option v-for="category in categories" :key="category" :value="category">{{ translateValue(category) }}</option></select></div>
       <div class="field"><label for="stock-filter">{{ t('stockStatus') }}</label><select id="stock-filter" v-model="stockFilter"><option value="all">{{ t('allStockStatuses') }}</option><option value="Activo">{{ t('active') }}</option><option value="Stock bajo">{{ t('lowStock') }}</option><option value="Sin stock">{{ t('outOfStock') }}</option></select></div>
-      <div class="field"><label for="product-sort">{{ t('sortBy') }}</label><select id="product-sort" v-model="sortBy"><option value="name">{{ t('name') }}</option><option value="category">{{ t('category') }}</option><option value="price">{{ t('price') }}</option><option value="stock">{{ t('quantity') }}</option></select></div>
+      <div class="field"><label for="product-sort">{{ t('sortBy') }}</label><select id="product-sort" v-model="sortBy"><option value="id">{{ t('id') }}</option><option value="name">{{ t('name') }}</option><option value="category">{{ t('category') }}</option><option value="price">{{ t('price') }}</option><option value="stock">{{ t('quantity') }}</option></select></div>
       <div class="filter-actions"><Button id="sort-direction" severity="secondary" outlined @click="sortDirection = sortDirection === 'asc' ? 'desc' : 'asc'">{{ t(sortDirection === 'asc' ? 'ascending' : 'descending') }}</Button><Button id="clear-filters" severity="secondary" text @click="clearFilters">{{ t('clearFilters') }}</Button></div>
     </section>
-    <p v-if="dataReady" class="results-summary" aria-live="polite">{{ t('filteredProductCount', { count: filteredProducts.length, total: productsStore.products.length }) }}</p>
+    <p v-if="dataReady" class="results-summary" aria-live="polite">{{ t('filteredProductCount', { count: filteredProducts.length, total: productsStore.products.length }) }} <small>{{ t('catalogRowNumberHint') }}</small></p>
+    <p v-if="commercial.loadError" class="review-warning" role="alert">{{ t('catalogAvailabilityUnknown') }}</p>
     <RequestState :loading="loading" :error="loadError" @retry="loadData" />
-    <div v-if="dataReady" class="table-scroll products-desktop" role="region" :aria-label="t('products')" tabindex="0"><table><thead><tr><th>{{ t('id') }}</th><th>{{ t('product') }}</th><th>{{ t('category') }}</th><th>{{ t('price') }}</th><th>{{ t('stock') }}</th><th>{{ t('status') }}</th><th>{{ t('actions') }}</th></tr></thead><tbody><tr v-for="product in filteredProducts" :key="product.id"><td>{{ product.id }}</td><td>{{ product.name }}</td><td>{{ translateValue(product.category) }}</td><td>S/ {{ product.price }}</td><td>{{ product.stock }}</td><td><span class="status-pill">{{ translateValue(getProductStatus(Number(product.stock))) }}</span></td><td class="product-actions"><Button class="view-btn" severity="secondary" outlined @click="$router.push('/products/' + product.id)">{{ t('viewProduct') }}</Button><Button class="edit-btn" v-if="auth.can(PERMISSIONS.PRODUCTS_EDIT)" @click="$router.push('/products/edit/' + product.id)">{{ t('edit') }}</Button><Button class="delete-btn" v-if="auth.can(PERMISSIONS.PRODUCTS_DELETE)" @click="confirmDeleteProduct(product)" :disabled="productsStore.saving || confirmingDelete">{{ t('delete') }}</Button></td></tr><tr v-if="!filteredProducts.length"><td colspan="7" class="empty">{{ t(productsStore.products.length ? 'noMatchingProducts' : 'noProducts') }}</td></tr></tbody></table></div>
-    <div v-if="dataReady" class="products-mobile"><article v-for="product in filteredProducts" :key="product.id" class="panel product-mobile-card"><h2>{{ product.name }}</h2><p>{{ translateValue(product.category) }} &#183; S/ {{ product.price }}</p><p><strong>{{ t('stock') }}: {{ product.stock }}</strong> <span class="status-pill">{{ translateValue(getProductStatus(Number(product.stock))) }}</span></p><div class="product-actions"><Button class="view-btn" severity="secondary" outlined @click="$router.push('/products/' + product.id)">{{ t('viewProduct') }}</Button><Button class="edit-btn" v-if="auth.can(PERMISSIONS.PRODUCTS_EDIT)" @click="$router.push('/products/edit/' + product.id)">{{ t('edit') }}</Button><Button class="delete-btn" v-if="auth.can(PERMISSIONS.PRODUCTS_DELETE)" @click="confirmDeleteProduct(product)" :disabled="productsStore.saving || confirmingDelete">{{ t('delete') }}</Button></div></article><p v-if="!filteredProducts.length" class="panel empty">{{ t(productsStore.products.length ? 'noMatchingProducts' : 'noProducts') }}</p></div>
+    <div v-if="dataReady" class="table-scroll products-desktop" role="region" :aria-label="t('products')" tabindex="0"><table><thead><tr><th scope="col" :title="t('catalogRowNumberHint')">{{ t('catalogRowNumber') }}</th><th>{{ t('product') }}</th><th>{{ t('category') }}</th><th>{{ t('price') }}</th><th>{{ t('stock') }}</th><th>{{ t('status') }}</th><th>{{ t('actions') }}</th></tr></thead><tbody><tr v-for="(product, index) in filteredProducts" :key="product.id"><td class="catalog-row-number">{{ index + 1 }}</td><td>{{ product.name }}<small v-if="pendingIds.has(String(product.id))" class="cell-secondary field-error">{{ t('commercialProductBlocked') }}</small><small v-else-if="Number(product.stock) === 0" class="cell-secondary">{{ t('catalogEmptyStock') }}</small></td><td>{{ translateValue(product.category) }}</td><td>{{ formatSoles(product.price) }}</td><td>{{ product.stock }}</td><td><span :class="['status-pill', Number(product.stock) <= 0 ? 'status-danger' : Number(product.stock) <= 5 ? 'status-warning' : '']">{{ translateValue(getProductStatus(Number(product.stock))) }}</span></td><td class="product-actions"><Button class="view-btn" severity="secondary" outlined @click="$router.push('/products/' + product.id)">{{ t('viewProduct') }}</Button><Button class="edit-btn" v-if="auth.can(PERMISSIONS.PRODUCTS_EDIT)" @click="$router.push('/products/edit/' + product.id)">{{ t('edit') }}</Button><Button class="delete-btn" v-if="auth.can(PERMISSIONS.PRODUCTS_DELETE)" @click="confirmDeleteProduct(product)" :disabled="productsStore.saving || confirmingDelete">{{ t('delete') }}</Button></td></tr><tr v-if="!filteredProducts.length"><td colspan="7" class="empty">{{ t(productsStore.products.length ? 'noMatchingProducts' : 'noProducts') }}</td></tr></tbody></table></div>
+    <div v-if="dataReady" class="products-mobile"><article v-for="(product, index) in filteredProducts" :key="product.id" class="panel product-mobile-card"><h2><span class="catalog-row-number">{{ t('catalogRowNumber') }} {{ index + 1 }}</span> &mdash; {{ product.name }}</h2><p v-if="pendingIds.has(String(product.id))" class="field-error">{{ t('commercialProductBlocked') }}</p><p v-else-if="Number(product.stock) === 0">{{ t('catalogEmptyStock') }}</p><p>{{ translateValue(product.category) }} &#183; {{ formatSoles(product.price) }}</p><p><strong>{{ t('stock') }}: {{ product.stock }}</strong> <span :class="['status-pill', Number(product.stock) <= 0 ? 'status-danger' : Number(product.stock) <= 5 ? 'status-warning' : '']">{{ translateValue(getProductStatus(Number(product.stock))) }}</span></p><div class="product-actions"><Button class="view-btn" severity="secondary" outlined @click="$router.push('/products/' + product.id)">{{ t('viewProduct') }}</Button><Button class="edit-btn" v-if="auth.can(PERMISSIONS.PRODUCTS_EDIT)" @click="$router.push('/products/edit/' + product.id)">{{ t('edit') }}</Button><Button class="delete-btn" v-if="auth.can(PERMISSIONS.PRODUCTS_DELETE)" @click="confirmDeleteProduct(product)" :disabled="productsStore.saving || confirmingDelete">{{ t('delete') }}</Button></div></article><p v-if="!filteredProducts.length" class="panel empty">{{ t(productsStore.products.length ? 'noMatchingProducts' : 'noProducts') }}</p></div>
   </div></AppLayout>
 </template>

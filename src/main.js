@@ -4,7 +4,6 @@ import { createApp } from 'vue'
 import { createPinia } from 'pinia'
 import PrimeVue from 'primevue/config'
 import Aura from '@primeuix/themes/aura'
-import { useAuthStore } from './iam/application/auth.js'
 
 import App from './App.vue'
 import router from './routes'
@@ -26,7 +25,6 @@ app.use(PrimeVue, {
     },
   },
 })
-useAuthStore(pinia).loadUser()
 app.use(router)
 app.use(i18n)
 

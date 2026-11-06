@@ -87,17 +87,14 @@ const totalWastes = computed(() => {
 
 const router = useRouter()
 const recentOperations = computed(() => operationsStore.operations.slice(-5).reverse())
-const quickActions = computed(() => (isAdministrative.value ? [
-  { to: '/products/new', label: 'newProduct', icon: 'plus', permission: PERMISSIONS.PRODUCTS_CREATE },
+const quickActions = computed(() => [
+  { to: '/sales/new', label: 'commercialNewSale', icon: 'sale', permission: PERMISSIONS.SALES_CREATE },
+  { to: '/purchases/new', label: 'commercialNewPurchase', icon: 'purchase', permission: PERMISSIONS.PURCHASES_CREATE },
   { to: '/products', label: 'consultProducts', icon: 'box', permission: PERMISSIONS.PRODUCTS_READ },
-  { to: '/operations', label: 'registerMovement', icon: 'movement', permission: PERMISSIONS.OPERATIONS_WRITE },
-  { to: '/waste', label: 'registerWaste', icon: 'waste', permission: PERMISSIONS.WASTE_WRITE }
-] : [
-  { to: '/products', label: 'consultProducts', icon: 'box', permission: PERMISSIONS.PRODUCTS_READ },
-  { to: '/operations', label: 'registerMovement', icon: 'movement', permission: PERMISSIONS.OPERATIONS_WRITE },
   { to: '/waste', label: 'registerWaste', icon: 'waste', permission: PERMISSIONS.WASTE_WRITE },
-  { to: '/alerts', label: 'consultAlerts', icon: 'alert', permission: PERMISSIONS.ALERTS_READ }
-]).filter(action => auth.can(action.permission)))
+  { to: '/reports', label: 'reporting', icon: 'reports', permission: PERMISSIONS.REPORTS_READ },
+  { to: '/users', label: 'users', icon: 'users', permission: PERMISSIONS.USERS_READ }
+].filter(action => auth.can(action.permission)))
 </script>
 <template>
   <AppLayout><div class="content">
@@ -106,7 +103,7 @@ const quickActions = computed(() => (isAdministrative.value ? [
     </PageHeader>
     <RequestState :loading="loading" :error="loadError" @retry="loadData" />
     <template v-if="dataReady">
-      <div v-if="isAdministrative" class="stats-grid">
+      <div class="stats-grid">
         <StatCard :label="t('totalProducts')" :value="totalProducts" icon="box" tone="success" />
         <StatCard :label="t('lowStock')" :value="lowStockProducts" icon="alert" tone="warning" />
         <StatCard :label="t('expiringSoon')" :value="expiringProducts" icon="clock" tone="warning" />

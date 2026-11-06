@@ -51,7 +51,7 @@ export const useOperationsStore = defineStore('operations', {
       this.saving = true
       this.error = null
       try {
-        const response = await createOperation({ ...operation, date: new Date().toLocaleString() })
+        const response = await createOperation({ ...operation, date: operation.sourceId ? operation.date : new Date().toLocaleString() })
         this.operations.push(response.data)
         return response.data
       } catch (error) {

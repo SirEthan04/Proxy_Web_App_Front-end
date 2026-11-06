@@ -1,7 +1,4 @@
-export const PRODUCT_CATEGORIES = Object.freeze([
-  'Bebidas', 'Lácteos', 'Panadería', 'Abarrotes', 'Galletas',
-  'Conservas', 'Dulces', 'Limpieza', 'Snacks'
-])
+export const PRODUCT_CATEGORIES = Object.freeze(['Bebidas', 'Lácteos', 'Abarrotes', 'Conservas', 'Galletas y snacks', 'Dulces', 'Panadería', 'Desayuno', 'Limpieza', 'Higiene personal', 'Mascotas', 'Hogar'])
 
 export function getProductValidationError(product, { includeStock = true } = {}) {
   if (typeof product.name !== 'string' || !product.name.trim() ||

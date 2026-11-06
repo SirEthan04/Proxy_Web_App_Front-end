@@ -24,7 +24,7 @@ const login = async () => {
   if (!email.value || !password.value) { showError('requiredFields'); return }
   submitting.value = true
   try {
-    if (!authStore.login(email.value, password.value)) { showError(authStore.error); return }
+    if (!await authStore.login(email.value, password.value)) { showError(authStore.error); return }
     password.value = ''
     const destination = route.query.redirect
     let target = '/dashboard'

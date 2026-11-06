@@ -1,4 +1,5 @@
 <script setup>
+import { formatDate } from '../../shared/presentation/utils/date-format.js'
 import { ref, computed, onMounted } from 'vue'
 import Button from 'primevue/button'
 import InputText from 'primevue/inputtext'
@@ -159,7 +160,7 @@ const requestConfirmation = () => {
               </td>
               <td>{{ translateValue(record.type) }}</td>
               <td>{{ record.quantity }}</td>
-              <td>{{ record.date }}</td>
+              <td>{{ record.sourceId && /^\d{4}-\d{2}-\d{2}T/.test(record.date) ? formatDate(record.date) : record.date }}<router-link v-if="record.sourceId && ['purchase', 'sale'].includes(record.sourceType)" class="cell-secondary inline-action" :to="(record.sourceType === 'purchase' ? '/purchases/' : '/sales/') + record.sourceId">{{ t('commercialViewDocument') }}</router-link></td>
             </tr>
             <tr v-if="!recentRecords.length">
               <td colspan="5" class="empty">{{ t('noOperations') }}</td>

@@ -1,4 +1,6 @@
 <script setup>
+import { useAuthStore } from '../../iam/application/auth.js'
+import { PERMISSIONS } from '../../iam/domain/permissions.js'
 import { computed, ref, onMounted } from 'vue'
 import Button from 'primevue/button'
 import InputText from 'primevue/inputtext'
@@ -8,6 +10,7 @@ import PageHeader from '../../shared/presentation/components/PageHeader.vue'
 import RequestState from '../../shared/presentation/components/RequestState.vue'
 import { useProductsStore } from '../../inventory/application/products.js'
 import { getOutOfStockProducts, getLowStockProducts, getExpiredProducts, getExpiringProducts } from '../application/alerts.js'
+const auth = useAuthStore()
 const products = useProductsStore()
 const selectedCategory = ref('all')
 const search = ref('')
@@ -31,7 +34,7 @@ onMounted(loadData)
       <div class="alert-filter-buttons" role="group" :aria-label="t('filterAlerts')"><Button severity="secondary" :outlined="selectedCategory !== 'all'" :aria-pressed="selectedCategory === 'all'" @click="selectedCategory = 'all'">{{ t('allAlerts') }} ({{ alerts.length }})</Button><Button v-for="group in groups" :key="group.key" :severity="group.tone" :outlined="selectedCategory !== group.key" :aria-pressed="selectedCategory === group.key" :data-alert-category="group.key" @click="selectedCategory = group.key">{{ t(group.label) }} ({{ group.products.length }})</Button></div>
       <div class="panel field"><label for="alert-search">{{ t('searchProduct') }}</label><InputText id="alert-search" v-model="search" type="search" :placeholder="t('searchByAvailableFields')" /></div>
       <p class="results-summary" aria-live="polite">{{ t('alertResultCount', { count: filteredAlerts.length }) }}</p>
-      <div v-if="filteredAlerts.length" class="table-scroll" role="region" :aria-label="t('alerts')" tabindex="0"><table><thead><tr><th>{{ t('alertCategory') }}</th><th>{{ t('product') }}</th><th>{{ t('stock') }}</th><th>{{ t('expirationDate') }}</th><th>{{ t('actions') }}</th></tr></thead><tbody><tr v-for="alert in filteredAlerts" :key="alert.kind + ':' + alert.product.id"><td><span class="status-pill" :class="'status-' + alert.tone">{{ t(alert.label) }}</span></td><td>{{ alert.product.name }}<small class="cell-secondary">{{ translateValue(alert.product.category) }}</small></td><td>{{ alert.product.stock }}</td><td>{{ alert.product.expirationDate || t('notAvailable') }}</td><td><router-link class="inline-action" :to="'/products/' + alert.product.id">{{ t('viewProduct') }}</router-link></td></tr></tbody></table></div>
+      <div v-if="filteredAlerts.length" class="table-scroll" role="region" :aria-label="t('alerts')" tabindex="0"><table><thead><tr><th>{{ t('alertCategory') }}</th><th>{{ t('product') }}</th><th>{{ t('stock') }}</th><th>{{ t('expirationDate') }}</th><th>{{ t('actions') }}</th></tr></thead><tbody><tr v-for="alert in filteredAlerts" :key="alert.kind + ':' + alert.product.id"><td><span class="status-pill" :class="'status-' + alert.tone">{{ t(alert.label) }}</span></td><td>{{ alert.product.name }}<small v-if="alert.kind === 'low'" class="cell-secondary">{{ t('remainingUnits', { stock: alert.product.stock, name: alert.product.name }) }}</small><small class="cell-secondary">{{ translateValue(alert.product.category) }}</small></td><td>{{ alert.product.stock }}</td><td>{{ alert.product.expirationDate || t('notAvailable') }}</td><td><router-link class="inline-action" :to="'/products/' + alert.product.id">{{ t('viewProduct') }}</router-link><router-link v-if="auth.can(PERMISSIONS.PURCHASES_CREATE)" class="inline-action" to="/purchases/new">{{ t('commercialNewPurchase') }}</router-link></td></tr></tbody></table></div>
       <p v-else class="panel empty" role="status">{{ t(alerts.length ? 'noFilteredAlerts' : 'noAlerts') }}</p>
     </template>
   </div></AppLayout>

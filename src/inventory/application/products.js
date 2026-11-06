@@ -1,3 +1,4 @@
+import { assertCommercialAvailable, hasCommercialHistory } from '../../commercial/application/product-history.js'
 import { useAuthStore } from '../../iam/application/auth.js'
 import { PERMISSIONS } from '../../iam/domain/permissions.js'
 import { hasProductHistory } from '../../operations/application/product-history.js'
@@ -10,8 +11,9 @@ import { getProducts, createProduct, updateProduct as updateProductApi, deletePr
 const pendingLoads = new WeakMap()
 const fail = key => { throw Object.assign(new Error(key), { messageKey: key }) }
 
-async function persistProduct(store, id, product) {
+async function persistProduct(store, id, product, verifyStock = false) {
   const response = await updateProductApi(id, product)
+  if (verifyStock && (!response.data || response.data.stock === null || response.data.stock === '' || String(response.data.id) !== String(id) || Number(response.data.stock) !== Number(product.stock) || response.data.status !== product.status)) fail('commercialVerifyFailed')
   const index = store.products.findIndex(item => String(item.id) === String(id))
   if (index !== -1) store.products[index] = response.data
   return response.data
@@ -83,6 +85,7 @@ export const useProductsStore = defineStore('products', {
       this.saving = true
       this.error = null
       try {
+        await assertCommercialAvailable(id)
         // Read current stock immediately before editing the catalog; never use form stock.
         const response = await getProducts()
         const current = response.data.find(item => String(item.id) === String(id))
@@ -98,7 +101,7 @@ export const useProductsStore = defineStore('products', {
         this.saving = false
       }
     },
-    async updateProduct(id, product) {
+    async updateProduct(id, product, commercialSource = null) {
       const auth = useAuthStore()
       // Operational callers can update stock/status, never catalog fields.
       if (!auth.can(PERMISSIONS.PRODUCTS_EDIT)) {
@@ -115,7 +118,8 @@ export const useProductsStore = defineStore('products', {
       this.saving = true
       this.error = null
       try {
-        return await persistProduct(this, id, product)
+        await assertCommercialAvailable(id, commercialSource)
+        return await persistProduct(this, id, product, Boolean(commercialSource))
       } catch (error) {
         this.error = 'updateProductFailed'
         throw error
@@ -129,6 +133,7 @@ export const useProductsStore = defineStore('products', {
       this.saving = true
       this.error = null
       try {
+        if (await hasCommercialHistory(id)) fail('productHasHistory')
         if (await hasProductHistory(id)) fail('productHasHistory')
         await deleteProductApi(id)
         this.products = this.products.filter(product => String(product.id) !== String(id))

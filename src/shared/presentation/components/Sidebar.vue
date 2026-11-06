@@ -1,4 +1,5 @@
 <script setup>
+import { useCommercialStore } from '../../../commercial/application/commercial.js'
 import NavIcon from './NavIcon.vue'
 
 import { PERMISSIONS } from '../../../iam/domain/permissions.js'
@@ -19,7 +20,7 @@ const route = useRoute()
 const authStore = useAuthStore()
 
 const toast = useToast()
-const stores = [useProductsStore(), useUsersStore(), useOperationsStore(), useWasteStore()]
+const stores = [useCommercialStore(), useProductsStore(), useUsersStore(), useOperationsStore(), useWasteStore()]
 const busy = computed(() => stores.some(store => store.saving || store.submitting))
 const logout = () => {
   if (busy.value) return
@@ -35,12 +36,17 @@ const navigationGroups = computed(() => [
     { to: '/dashboard', label: 'dashboard', icon: 'home', permission: PERMISSIONS.DASHBOARD_READ }
   ] },
   { label: 'navDailyTasks', items: [
+    { to: '/purchases', label: 'commercialPurchases', icon: 'purchase', permission: PERMISSIONS.PURCHASES_READ },
+    { to: '/sales', label: 'commercialSales', icon: 'sale', permission: PERMISSIONS.SALES_READ },
+  ] },
+  { label: 'navMerchandise', items: [
     { to: '/products', label: 'products', icon: 'box', permission: PERMISSIONS.PRODUCTS_READ },
     { to: '/operations', label: 'entriesAndExits', icon: 'movement', permission: PERMISSIONS.OPERATIONS_WRITE },
     { to: '/waste', label: 'waste', icon: 'waste', permission: PERMISSIONS.WASTE_WRITE },
-    { to: '/alerts', label: 'alerts', icon: 'alert', permission: PERMISSIONS.ALERTS_READ }
+
   ] },
   { label: 'navAdministration', items: [
+    { to: '/alerts', label: 'alerts', icon: 'alert', permission: PERMISSIONS.ALERTS_READ },
     { to: '/reports', label: 'reporting', icon: 'reports', permission: PERMISSIONS.REPORTS_READ },
     { to: '/users', label: 'users', icon: 'users', permission: PERMISSIONS.USERS_READ }
   ] }

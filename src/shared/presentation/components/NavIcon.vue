@@ -1,6 +1,8 @@
 <script setup>
 defineProps({ name: { type: String, default: 'box' } })
 const paths = {
+  purchase: 'M3 3h2l3 12h10l3-9H6M9 21h.01M18 21h.01M10 9h6m-3-3v6',
+  sale: 'M3 3h2l3 12h10l3-9H6M9 21h.01M18 21h.01M10 9h6',
   home: 'M3 10 12 3l9 7v10a1 1 0 0 1-1 1h-5v-7H9v7H4a1 1 0 0 1-1-1Z',
   box: 'm3 7 9-4 9 4-9 4Zm0 0v10l9 4 9-4V7M12 11v10M7.5 5l9 4',
   movement: 'M3 7h17m-4-4 4 4-4 4M21 17H4m4-4-4 4 4 4',

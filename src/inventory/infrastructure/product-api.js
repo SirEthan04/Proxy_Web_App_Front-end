@@ -9,9 +9,9 @@ export const createProduct = (product) => {
 }
 
 export const updateProduct = (id, product) => {
-    return api.put(`/products/${id}`, product)
+    return api.put(`/products/${encodeURIComponent(String(id))}`, product)
 }
 
 export const deleteProduct = (id) => {
-    return api.delete(`/products/${id}`)
+    return api.delete(`/products/${encodeURIComponent(String(id))}`)
 }
