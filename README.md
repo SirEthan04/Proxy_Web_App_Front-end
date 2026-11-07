@@ -1,95 +1,72 @@
 # BodeGo
 
-Prototipo universitario: Vue 3, JavaScript, Vite, Pinia, Axios, PrimeVue y JSON Server. Conserva IAM, Inventory, Operations, Commercial, Monitoring, Reporting y Shared.
+Prototipo universitario con Vue 3, Vite, Pinia, Axios, PrimeVue y JSON Server.
 
-## Ejecutar en otra computadora
+## Instalación e inicio
 
-1. Instalar Node.js 22.12 o posterior de la rama 22, o Node.js 24, con npm.
-2. Clonar y abrir el proyecto en WebStorm o una terminal:
+Instalar Node.js 22.12 o posterior de la rama 22, o Node.js 24, con npm.
 
 ```sh
 git clone --branch feature/commercial-purchases-sales https://github.com/SirEthan04/Proxy_Web_App_Front-end.git
 cd Proxy_Web_App_Front-end
-npm install
+npm ci
 ```
 
-Esta version se desarrolla en feature/commercial-purchases-sales. Clonar esa rama permite obtener el codigo y la semilla; las bases locales, respaldos y perfiles no se distribuyen. No se ha realizado merge a main ni develop.
-
-3. En una primera terminal, iniciar JSON Server:
+Terminal 1:
 
 ```sh
 npm run server
 ```
 
-Se crea server/work-db.json desde server/seed.json solo si no existe; de lo contrario conserva sus datos. La consola muestra todos los recursos disponibles, incluidos products, users, operations, wastes, purchases y sales en http://localhost:3001.
+JSON Server: http://localhost:3001. Expone `/products`, `/users`, `/operations`, `/wastes`, `/purchases` y `/sales`. También conserva la reescritura `/api/v1/*` en `scripts/server.mjs`.
 
-4. En una segunda terminal, iniciar solamente Vue + Vite:
+Terminal 2:
 
 ```sh
 npm run dev
 ```
 
-Vite muestra `Local: http://localhost:5174/` y consulta la API http://localhost:3001. Este comando no inicia ni modifica JSON Server.
+Abrir manualmente http://localhost:5174 en Brave, Chrome, Edge o Firefox. No requiere un perfil especial ni abre el navegador automáticamente. Ambos puertos son fijos; si están ocupados, detener el servicio anterior desde su terminal. No se finalizan procesos ajenos. Ctrl+C en cada terminal detiene su servicio. Si PowerShell bloquea npm.ps1, usar npm.cmd.
 
-5. Abrir **http://localhost:5174** en Brave, Chrome, Edge o Firefox.
-6. Para detener todo, pulsar **Ctrl+C en cada terminal**. Cada comando controla unicamente su propio servicio.
+## Datos y recuperación
 
-En WebStorm usar dos terminales independientes o dos configuraciones npm, server y dev, con la raiz del proyecto como directorio de trabajo. No se necesita un perfil especial. No se abre ningun navegador automaticamente. Si PowerShell bloquea npm.ps1, usar npm.cmd con los mismos argumentos.
+`server/seed.json` contiene seis productos y dos usuarios ficticios; compras, ventas, movimientos y mermas comienzan vacíos. El primer arranque crea `server/work-db.json` desde la semilla únicamente si falta. Los siguientes arranques conservan los datos; una base incompleta o corrupta se conserva y produce un error. No se renumeran identificadores: la columna N.º representa la posición visible al ordenar o filtrar.
 
-| Servicio | URL |
-| --- | --- |
-| Vite | http://localhost:5174 |
-| JSON Server | http://localhost:3001 |
-
-Los puertos son fijos. Si estan ocupados, el comando informa el puerto y trata de identificar el proceso y su PID con las herramientas disponibles del sistema; si no puede, lo indica. No inicia silenciosamente en otro puerto ni mata procesos ajenos. Detener la ejecucion anterior con Ctrl+C o identificar el programa desde el administrador de procesos antes de cerrarlo y volver a ejecutar el comando del servicio correspondiente. Vite utiliza strictPort y JSON Server comprueba su puerto. Si un servicio no inicia, el otro permanece independiente. Un proceso antiguo node scripts/dev.mjs del arranque conjunto puede ocupar ambos puertos: detenerlo con Ctrl+C en su terminal antes de abrir las dos nuevas terminales. Si esa terminal no existe, comprobar el PID y la linea de comando en el administrador de procesos antes de finalizar exclusivamente ese proceso; no cerrar todos los procesos Node.
-
-## Datos locales reproducibles
-
-La semilla versionada **server/seed.json** contiene seis productos y dos usuarios demo. Compras, ventas, movimientos y mermas comienzan vacios. Precios, stock y vencimientos son ficticios; no hay pendientes antiguos ni historiales personales. No se copia automaticamente server/db.json ni la demo anterior.
-
-El primer arranque crea **server/work-db.json**, excluido de Git. Los siguientes lo reutilizan sin sobrescribirlo. Una base incompleta o corrupta produce un error y se conserva para revisarla. Los ID internos se mantienen; la columna N.o solo indica la posicion visible y se recalcula al ordenar o filtrar.
-
-| Rol | Correo | Clave exclusivamente demo |
+| Rol | Correo | Clave de demostración |
 | --- | --- | --- |
 | Administrador | admin@bodego.com | 1234 |
 | Empleado | empleado@bodego.com | 1234 |
 
-No usar datos o claves reales. JSON Server expone usuarios y no proporciona autenticacion, permisos, concurrencia ni transacciones seguras. Eso corresponde al futuro backend ASP.NET Core.
+Para respaldar: detener ambos servicios y copiar `server/work-db.json` fuera del proyecto. Para recuperar: detener los servicios, respaldar primero la base actual y copiar la copia elegida sobre ese archivo. No publicar bases locales, respaldos, perfiles ni secretos. No hay comando de reinicio destructivo.
 
-server/db.json, server/demo-db.json, los respaldos y perfiles anteriores permanecen intactos y no los utiliza el arranque estandar. demo:dev y demo:server son alias de Vite y JSON Server respectivamente; no inician servicios conjuntos. demo:prepare queda como herramienta historica explicita; no se ejecuta al iniciar. demo:browser fue retirado.
+El navegador conserva sesión y seguimientos de operaciones inciertas en localStorage. No borrar esos seguimientos para desbloquear operaciones ni reenviar escrituras inciertas automáticamente. El uso normal funciona con almacenamiento vacío y no depende de un perfil concreto.
 
-## Conservar, reiniciar y recuperar datos
+JSON Server es un backend de demostración: expone usuarios y no proporciona autenticación real, autorización en servidor ni transacciones seguras. No utilizar datos ni claves reales.
 
-Para conservar datos, detener y volver a iniciar. Para un respaldo manual, detener los servicios y copiar server/work-db.json a un lugar seguro. No publicar respaldos ni perfiles en Git.
+## Estructura activa
 
-Para reiniciar deliberadamente solo la base de trabajo, detener npm run server y npm run dev en sus respectivas terminales y ejecutar:
+- `src/`: interfaz, roles, validaciones, reglas de negocio, traducciones y protección de stock.
+- `public/`: recursos públicos.
+- `server/seed.json`: semilla versionada para instalaciones nuevas.
+- `server/work-db.json`: datos locales persistentes, excluidos de Git.
+- `scripts/server.mjs`: arranque independiente de JSON Server y rutas.
+- `scripts/local-data.mjs`: creación segura de la base si no existe.
+- `scripts/ports.mjs`: comprobación del puerto sin cambiarlo ni cerrar otros procesos.
+- `vite.config.js`: Vite en localhost:5174, sin apertura automática.
 
-```sh
-npm run data:reset -- --backup-and-reset
-```
+Los históricos, importadores, herramientas de demostración y pruebas se archivaron fuera del proyecto durante la limpieza de presentación. No son requisitos del arranque. No se mantienen pruebas automatizadas en esta entrega.
 
-Sin esa opcion no cambia nada. Rechaza el reinicio si el puerto 3001 esta ocupado. Antes de escribir crea un respaldo **server/work-db.json.FECHA.backup.local**, excluido de Git. No modifica el original, las copias anteriores ni los seguimientos del navegador.
-
-Para recuperar un respaldo, detener servicios, guardar otra copia del archivo de trabajo actual y copiar el respaldo elegido sobre server/work-db.json; despues reiniciar.
-
-Una instalacion nueva funciona con localStorage vacio. Si reutilizas un navegador con operaciones inciertas, sus seguimientos siguen protegidos y no se limpian automaticamente. Despues de un reinicio deliberado de base puedes usar otro perfil para una demostracion nueva conservando el original. El uso normal no depende de ningun perfil concreto.
-
-## Futuro backend ASP.NET Core
-
-La unica variable HTTP del frontend es **VITE_API_BASE_URL**. Desarrollo utiliza http://localhost:3001, configurado en .env.development y documentado en .env.example.
-
-Para otro backend, crear .env.development.local con VITE_API_BASE_URL apuntando a su URL y ejecutar **npm run dev:frontend**, que inicia solo Vite. Reiniciar Vite tras cambiar la variable. El backend debe permitir CORS desde http://localhost:5174 y proporcionar los contratos correspondientes. Para un build con otra URL usar .env.production.local antes de npm run build. No se consume MockAPI.
-
-## Validaciones y navegadores
+## Validación de presentación
 
 ```sh
-npm test
 npm run build
 git diff --check
 ```
 
-Las pruebas usan fixtures sinteticos versionados, la semilla y copias temporales; no requieren bases, respaldos ni perfiles de esta computadora. Cubren roles, login, productos, IDs mixtos, numeracion renderizada, compras, ventas, stock, movimientos, mermas, alertas, reportes, persistencia, traducciones y fallos parciales.
+Antes de retirar las pruebas se ejecutaron las 20 existentes con éxito sobre fixtures y bases aisladas. Cubren login de ambos roles, permisos, productos, numeración, compras, ventas, carrito múltiple, stock, movimientos, mermas, alertas, reportes, traducciones, persistencia y errores parciales. Esta cobertura no sustituye una revisión visual interactiva.
 
-El frontend usa APIs estandar de versiones actuales de Brave, Chrome, Edge y Firefox sobre localhost. No utiliza extensiones ni APIs exclusivas de Edge. Hace falta permitir almacenamiento local para conservar sesion y seguimientos. La validacion visual manual en los cuatro navegadores y la ejecucion real en macOS/Linux siguen pendientes; no se presentan como pruebas realizadas.
+Para la presentación, verificar manualmente dashboard, búsqueda y formularios, carrito, alertas, reportes y cambio español/inglés; revisar tamaños móvil y escritorio en Brave, Chrome, Edge y Firefox. Permitir almacenamiento local. Las reglas responsive existen, pero la validación visual en los cuatro navegadores y la ejecución real en macOS/Linux siguen pendientes.
 
-Las escrituras inciertas siguen bloqueadas y no se reenvian automaticamente. El catalogo opcional de 59 productos continua separado en demo/catalog.json; el arranque no lo importa.
+## Configuración HTTP
+
+`VITE_API_BASE_URL` es la única variable HTTP del frontend. `.env.development` y `.env.example` apuntan a http://localhost:3001. Para otro backend, crear `.env.development.local` y reiniciar `npm run dev`; el backend debe permitir CORS desde http://localhost:5174 y respetar los contratos. Para producción puede configurarse `.env.production.local` antes del build. No se consume MockAPI.

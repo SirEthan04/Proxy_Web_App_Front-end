@@ -1,6 +1,5 @@
-import { mkdir, readFile, writeFile, copyFile } from 'node:fs/promises'
+import { mkdir, readFile, writeFile } from 'node:fs/promises'
 import { resolve, dirname } from 'node:path'
-import { constants } from 'node:fs'
 
 export const collections = ['products', 'users', 'purchases', 'sales', 'operations', 'wastes']
 export async function ensureLocalData(root = process.cwd()) {
@@ -19,14 +18,4 @@ export async function ensureLocalData(root = process.cwd()) {
   try { await writeFile(target, seed, { flag: 'wx' }) }
   catch (error) { if (error.code !== 'EEXIST') throw error }
   return target
-}
-
-export async function resetLocalData(root = process.cwd()) {
-  const target = await ensureLocalData(root)
-  const backup = target + '.' + Date.now() + '.backup.local'
-  await copyFile(target, backup, constants.COPYFILE_EXCL)
-  const seed = await readFile(resolve(root, 'server/seed.json'), 'utf8')
-  JSON.parse(seed)
-  await writeFile(target, seed)
-  return backup
 }
