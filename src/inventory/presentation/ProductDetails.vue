@@ -1,10 +1,11 @@
 <script setup>
+import './inventory.css'
 import { computed, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import Button from 'primevue/button'
 import { t, translateValue } from '../../i18n.js'
 import { formatSoles } from '../../shared/presentation/utils/currency.js'
-import { useProductsStore } from '../application/products.js'
+import { useProductsStore } from '../application/inventory.js'
 import AppLayout from '../../shared/presentation/layouts/AppLayout.vue'
 import PageHeader from '../../shared/presentation/components/PageHeader.vue'
 import RequestState from '../../shared/presentation/components/RequestState.vue'
@@ -12,12 +13,12 @@ const route = useRoute()
 const router = useRouter()
 const products = useProductsStore()
 const product = computed(() => products.products.find(item => String(item.id) === String(route.params.id)))
-const loadData = async () => { try { await products.loadProducts() } catch { /* RequestState displays the error. */ } }
-watch(() => route.params.id, () => { if (!product.value || products.loadError) loadData() }, { immediate: true })
+const loadData = async () => { try { await products.loadProducts(String(route.params.id)) } catch { /* RequestState displays the error. */ } }
+watch(() => route.params.id, () => { loadData() }, { immediate: true })
 </script>
 <template>
   <AppLayout>
-    <div class="content">
+    <div class="content inventory-page">
       <PageHeader :title="t('productDetails')" :description="t('productDetailsHint')">
         <template #actions>
           <Button class="cancel-btn" @click="router.push('/products')">{{ t('backToProducts') }}</Button>

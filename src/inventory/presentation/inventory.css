@@ -1,0 +1,37 @@
+/* Scoped by page class so shared operational screens keep their layout. */
+.inventory-page { min-width: 0; }
+.inventory-page .products-desktop table { table-layout: fixed; min-width: 860px; }
+.inventory-page .products-desktop th:nth-child(1) { width: 6%; }
+.inventory-page .products-desktop th:nth-child(2) { width: 26%; }
+.inventory-page .products-desktop th:nth-child(3) { width: 20%; }
+.inventory-page .products-desktop th:nth-child(4) { width: 12%; }
+.inventory-page .products-desktop th:nth-child(5) { width: 8%; }
+.inventory-page .products-desktop th:nth-child(6) { width: 14%; }
+.inventory-page .products-desktop th:nth-child(7) { width: 14%; }
+.inventory-page .products-desktop td { vertical-align: top; line-height: 1.5; }
+.inventory-page .products-desktop td:nth-child(4),
+.inventory-page .products-desktop td:nth-child(5) { font-variant-numeric: tabular-nums; }
+.inventory-page .status-pill { white-space: normal; line-height: 1.4; }
+.inventory-page .cell-secondary { margin-top: 8px; line-height: 1.5; }
+.inventory-page .product-mobile-card h2,
+.inventory-page .product-mobile-card p,
+.inventory-page .section-heading h2,
+.inventory-page .panel p { overflow-wrap: anywhere; }
+.inventory-page .product-mobile-card h2 { font-size: 18px; line-height: 1.5; }
+.inventory-page .section-heading > *,
+.inventory-page .form-grid > * { min-width: 0; }
+.inventory-page .field select { max-width: 100%; text-overflow: ellipsis; }
+.inventory-page .form-actions { flex-wrap: wrap; }
+.inventory-page .inventory-categories summary { cursor: pointer; font-weight: 600; line-height: 1.5; }
+.inventory-page .category-list { list-style: none; padding: 0; margin: 20px 0; display: grid; gap: 12px; }
+.inventory-page .category-list li { min-width: 0; padding-bottom: 12px; border-bottom: 1px solid var(--b-border); overflow-wrap: anywhere; line-height: 1.5; }
+.inventory-page .category-list strong,
+.inventory-page .category-list span { display: block; }
+.inventory-page .category-list span { color: var(--b-muted); font-size: 14px; margin-top: 4px; }
+.inventory-page .inventory-categories form { margin: 20px 0; }
+.inventory-page .inventory-categories form > .p-button { justify-self: start; align-self: start; }
+.inventory-page .inventory-categories [role="status"] { grid-column: 1 / -1; margin: 0; }
+@media (max-width: 599px) {
+  .inventory-page .section-heading { flex-wrap: wrap; }
+  .inventory-page .form-actions > * { flex: 1 1 auto; }
+}
