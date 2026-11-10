@@ -1,19 +1,20 @@
 <script setup>
+import './inventory.css'
 import AppLayout from '../../shared/presentation/layouts/AppLayout.vue'
 import PageHeader from '../../shared/presentation/components/PageHeader.vue'
 import RequestState from '../../shared/presentation/components/RequestState.vue'
 
 import { t, translateValue } from '../../i18n.js'
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import Button from 'primevue/button'
 import { useToast } from 'primevue/usetoast'
 import InputText from 'primevue/inputtext'
 import { useRouter } from 'vue-router'
-import { useProductsStore } from '../application/products.js'
-import { PRODUCT_CATEGORIES, getProductValidationError } from '../domain/product-validation.js'
+import { useProductsStore } from '../application/inventory.js'
 
 const router = useRouter()
 const productsStore = useProductsStore()
+onMounted(() => productsStore.loadProducts().catch(() => {}))
 const toast = useToast()
 const notify = (severity, key) => toast.add({
   severity,
@@ -24,28 +25,26 @@ const notify = (severity, key) => toast.add({
 const name = ref('')
 const category = ref('')
 const price = ref('')
-const stock = ref('')
-const expirationDate = ref('')
+const stock = ref('0')
+const minimumStock = ref('0')
 const busy = computed(() => productsStore.saving)
 
 const saveProduct = async () => {
   if (busy.value) return
-  const product = { name: name.value, category: category.value, price: price.value, stock: stock.value, expirationDate: expirationDate.value }
-  const validationError = getProductValidationError(product)
-  if (validationError) { notify('error', validationError); return }
+  const product = { name: name.value, categoryId: category.value, price: price.value, minimumStock: minimumStock.value }
   try {
     await productsStore.addProduct(product)
     notify('success', 'productCreated')
     await router.push('/products')
-  } catch (error) { notify('error', error.messageKey || productsStore.error || 'createProductFailed') }
+  } catch (error) { notify('error', error.message) }
 }
 </script>
 
 <template>
   <AppLayout>
-    <div class="content">
+    <div class="content inventory-page">
       <PageHeader :title="t('newProduct')" :description="t('newProductSubtitle')" />
-      <form class="panel form-grid" @submit.prevent="saveProduct" novalidate>
+      <RequestState :loading="productsStore.loading" :error="productsStore.loadError" @retry="productsStore.loadProducts().catch(() => {})" /><p>El stock inicial es cero. El vencimiento se registra por lote en operaciones de inventario.</p><form class="panel form-grid" @submit.prevent="saveProduct" novalidate>
         <div class="form-intro">
           <h2>{{ t('productInformation') }}</h2>
           <p>{{ t('productFormHint') }}</p>
@@ -65,9 +64,9 @@ const saveProduct = async () => {
         </div>
         <div class="field">
           <label for="product-category">{{ t('category') }}</label>
-          <select id="product-category" v-model="category" :disabled="busy" aria-required="true">
+          <select id="product-category" v-model="category" :disabled="busy" :title="productsStore.categories.find(c => c.id === category)?.name" aria-required="true">
             <option value="">{{ t('selectCategory') }}</option>
-            <option v-for="item in PRODUCT_CATEGORIES" :key="item" :value="item">{{ translateValue(item) }}</option>
+            <option v-for="item in productsStore.categories.filter(c => c.active)" :key="item.id" :value="item.id">{{ item.name }}</option>
           </select>
         </div>
         <div class="field">
@@ -87,7 +86,7 @@ const saveProduct = async () => {
           <label for="product-stock">{{ t('stock') }}</label>
           <InputText
             id="product-stock"
-            v-model="stock"
+            :value="stock" readonly
             :disabled="busy"
             type="number"
             inputmode="decimal"
@@ -96,8 +95,8 @@ const saveProduct = async () => {
           />
         </div>
         <div class="field">
-          <label for="product-expiry">{{ t('expirationDate') }}</label>
-          <InputText id="product-expiry" v-model="expirationDate" :disabled="busy" type="date" aria-required="true" />
+          <label for="product-expiry">Stock mínimo</label>
+          <InputText id="product-expiry" v-model="minimumStock" :disabled="busy" type="number" min="0" step="1" aria-required="true" />
         </div>
         <div class="form-actions">
           <Button type="button" class="cancel-btn" :disabled="busy" @click="router.push('/products')">{{ t('cancel') }}</Button>
