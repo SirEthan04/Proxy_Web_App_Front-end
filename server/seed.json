@@ -1,0 +1,78 @@
+{
+  "products": [
+    {
+      "id": 1,
+      "name": "Coca-Cola 500 ml",
+      "category": "Bebidas",
+      "price": 3.5,
+      "stock": 20,
+      "status": "Activo",
+      "expirationDate": "2030-12-31"
+    },
+    {
+      "id": 2,
+      "name": "Leche Pura Vida",
+      "category": "Lácteos",
+      "price": 4.6,
+      "stock": 20,
+      "status": "Activo",
+      "expirationDate": "2030-12-31"
+    },
+    {
+      "id": "3",
+      "name": "Nesquik",
+      "category": "Dulces",
+      "price": 5.3,
+      "stock": 20,
+      "status": "Activo",
+      "expirationDate": "2030-12-31"
+    },
+    {
+      "id": "4",
+      "name": "Pepsi 500 ml",
+      "category": "Bebidas",
+      "price": 2.5,
+      "stock": 20,
+      "status": "Activo",
+      "expirationDate": "2030-12-31"
+    },
+    {
+      "id": "8",
+      "name": "Leche Condensada",
+      "category": "Lácteos",
+      "price": 1.5,
+      "stock": 20,
+      "status": "Activo",
+      "expirationDate": "2030-12-31"
+    },
+    {
+      "id": "X9PeXW7",
+      "name": "Pan Bimbo",
+      "category": "Panadería",
+      "price": 5.2,
+      "stock": 20,
+      "status": "Activo",
+      "expirationDate": "2030-12-31"
+    }
+  ],
+  "users": [
+    {
+      "id": 1,
+      "name": "Administrador Demo",
+      "email": "admin@bodego.com",
+      "password": "1234",
+      "role": "Administrador"
+    },
+    {
+      "id": 2,
+      "name": "Empleado Demo",
+      "email": "empleado@bodego.com",
+      "password": "1234",
+      "role": "Empleado"
+    }
+  ],
+  "purchases": [],
+  "sales": [],
+  "operations": [],
+  "wastes": []
+}

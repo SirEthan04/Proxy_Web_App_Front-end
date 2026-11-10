@@ -1,232 +1,127 @@
 <script setup>
+import AppLayout from '../../shared/presentation/layouts/AppLayout.vue'
+import PageHeader from '../../shared/presentation/components/PageHeader.vue'
+import RequestState from '../../shared/presentation/components/RequestState.vue'
+
+import { t, translateValue } from '../../i18n.js'
+import { ref, computed, watch } from 'vue'
 import Button from 'primevue/button'
+import { useToast } from 'primevue/usetoast'
 import InputText from 'primevue/inputtext'
-import { t } from '../../i18n.js'
-
-import { ref, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { getProductStatus } from '../domain/product.js'
-import Sidebar from '../../shared/presentation/components/Sidebar.vue'
-import Header from '../../shared/presentation/components/Header.vue'
-
 import { useProductsStore } from '../application/products.js'
+import { PRODUCT_CATEGORIES, getProductValidationError } from '../domain/product-validation.js'
 
-const route = useRoute()
 const router = useRouter()
+const route = useRoute()
 const productsStore = useProductsStore()
-
-const id = Number(route.params.id)
-
+const toast = useToast()
+const notify = (severity, key) => toast.add({
+  severity,
+  summary: t(severity === 'success' ? 'successTitle' : 'errorTitle'),
+  detail: t(key),
+  life: severity === 'success' ? 4000 : 8000
+})
 const name = ref('')
 const category = ref('')
 const price = ref('')
 const stock = ref('')
 const expirationDate = ref('')
+const busy = computed(() => productsStore.saving)
 
-onMounted(async () => {
-  await productsStore.loadProducts()
-
-  const product = productsStore.products.find(
-      product => Number(product.id) === id
-  )
-  if (!product) {
-    alert(t('productNotFound'))
-    router.push('/products')
-    return
-  }
-
-  name.value = product.name
-  category.value = product.category
-  price.value = product.price
-  stock.value = product.stock
-  expirationDate.value = product.expirationDate
-})
+const id = computed(() => String(route.params.id))
+const loaded = ref(false)
+const missing = ref(false)
+const loadData = async () => {
+  const requestedId = id.value
+  loaded.value = false
+  missing.value = false
+  try {
+    await productsStore.loadProducts()
+    if (requestedId !== id.value) return
+    const product = productsStore.products.find(product => String(product.id) === requestedId)
+    if (!product) { missing.value = true; return }
+    name.value = product.name
+    category.value = product.category
+    price.value = product.price
+    stock.value = product.stock
+    expirationDate.value = product.expirationDate
+    loaded.value = true
+  } catch { /* The load error is shown with a manual retry. */ }
+}
+watch(id, loadData, { immediate: true })
 
 const updateProduct = async () => {
-  if (
-      !name.value ||
-      !category.value ||
-      price.value === '' ||
-      stock.value === '' ||
-      !expirationDate.value
-  ) {
-    alert(t('requiredFields'))
-    return
-  }
-
-  await productsStore.updateProduct(id, {
-    name: name.value,
-    category: category.value,
-    price: Number(price.value),
-    stock: Number(stock.value),
-    expirationDate: expirationDate.value,
-    status: getProductStatus(Number(stock.value))
-  })
-
-  router.push('/products')
+  if (busy.value || !loaded.value) return
+  const details = { name: name.value, category: category.value, price: price.value, expirationDate: expirationDate.value }
+  const validationError = getProductValidationError(details, { includeStock: false })
+  if (validationError) { notify('error', validationError); return }
+  try {
+    await productsStore.updateProductDetails(id.value, details)
+    notify('success', 'productUpdated')
+    await router.push('/products')
+  } catch (error) { notify('error', error.messageKey || productsStore.error || 'updateProductFailed') }
 }
 </script>
 
 <template>
-  <div class="layout">
-
-    <Sidebar />
-
-    <div class="main">
-
-      <Header />
-
-      <div class="content">
-
-        <h1>{{ t('editProduct') }}</h1>
-        <p>{{ t('editProductSubtitle') }}</p>
-
-        <div class="form-box">
-
-          <label>{{ t('name') }}</label>
-          <InputText
-              v-model="name"
-              type="text" />
-
-          <label>{{ t('category') }}</label>
-          <select v-model="category">
-            <option value="Bebidas">
-              {{ t('beverages') }}
-            </option>
-
-            <option value="Lácteos">
-              {{ t('dairy') }}
-            </option>
-
-            <option value="Panadería">
-              {{ t('bakery') }}
-            </option>
-
-            <option value="Abarrotes">
-              {{ t('groceries') }}
-            </option>
-
-            <option value="Galletas">
-              {{ t('cookies') }}
-            </option>
-
-            <option value="Conservas">
-              {{ t('cannedGoods') }}
-            </option>
-
-            <option value="Dulces">
-              {{ t('sweets') }}
-            </option>
-          </select>
-
-          <label>{{ t('price') }}</label>
-          <input
-              v-model="price"
-              type="number"
-              step="0.01"
-          >
-
-          <label>{{ t('stock') }}</label>
-          <input
-              v-model="stock"
-              type="number"
-          >
-
-          <label>{{ t('expirationDate') }}</label>
-          <input
-              v-model="expirationDate"
-              type="date"
-          >
-
-          <div class="buttons">
-            <Button
-                class="cancel-btn"
-                @click="router.push('/products')"
-            >
-              {{ t('cancel') }}
-            </Button>
-
-            <Button
-                class="save-btn"
-                @click="updateProduct"
-            >
-              {{ t('saveChanges') }}
-            </Button>
-          </div>
-
+  <AppLayout>
+    <div class="content">
+      <PageHeader :title="t('editProduct')" :description="t('editProductSubtitle')" />
+      <RequestState :loading="productsStore.loading" :error="productsStore.loadError" @retry="loadData" />
+      <p v-if="missing" role="alert">{{ t('productNotFound') }}</p>
+      <form v-if="loaded" class="panel form-grid" @submit.prevent="updateProduct" novalidate>
+        <div class="form-intro">
+          <h2>{{ t('productInformation') }}</h2>
+          <p>{{ t('productFormHint') }}</p>
         </div>
-
-      </div>
-
+        <div class="span-2">
+          <div class="field">
+            <label for="product-name">{{ t('name') }}</label>
+            <InputText
+              id="product-name"
+              v-model="name"
+              :disabled="busy"
+              type="text"
+              autocomplete="off"
+              aria-required="true"
+            />
+          </div>
+        </div>
+        <div class="field">
+          <label for="product-category">{{ t('category') }}</label>
+          <select id="product-category" v-model="category" :disabled="busy" aria-required="true">
+            <option v-if="category && !PRODUCT_CATEGORIES.includes(category)" :value="category">{{ translateValue(category) }}</option>
+            <option v-for="item in PRODUCT_CATEGORIES" :key="item" :value="item">{{ translateValue(item) }}</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="product-price">{{ t('price') }}</label>
+          <InputText
+            id="product-price"
+            v-model="price"
+            :disabled="busy"
+            type="number"
+            min="0"
+            step="any"
+            inputmode="decimal"
+            aria-required="true"
+          />
+        </div>
+        <div class="field">
+          <label for="product-stock">{{ t('stock') }}</label>
+          <InputText id="product-stock" :value="stock" type="number" readonly aria-describedby="stock-hint" />
+          <small id="stock-hint">{{ t('stockReadOnlyHint') }}</small>
+        </div>
+        <div class="field">
+          <label for="product-expiry">{{ t('expirationDate') }}</label>
+          <InputText id="product-expiry" v-model="expirationDate" :disabled="busy" type="date" aria-required="true" />
+        </div>
+        <div class="form-actions">
+          <Button type="button" class="cancel-btn" :disabled="busy" @click="router.push('/products')">{{ t('cancel') }}</Button>
+          <Button type="submit" class="save-btn" :disabled="busy" :loading="busy">{{ t('saveChanges') }}</Button>
+        </div>
+      </form>
     </div>
-
-  </div>
+  </AppLayout>
 </template>
-
-<style scoped>
-.layout {
-  display: flex;
-  min-height: 100vh;
-}
-
-.main {
-  flex: 1;
-  background: #f4f7fb;
-}
-
-.content {
-  padding: 30px;
-}
-
-.content p {
-  color: #64748b;
-}
-
-.form-box {
-  margin-top: 25px;
-  background: white;
-  padding: 25px;
-  border-radius: 10px;
-  max-width: 600px;
-}
-
-label {
-  display: block;
-  margin-top: 15px;
-  margin-bottom: 7px;
-}
-
-input,
-select {
-  width: 100%;
-  padding: 11px;
-  border: 1px solid #cbd5e1;
-  border-radius: 6px;
-}
-
-.cancel-btn {
-  background-color: #6b7280;
-  color: white;
-  border: none;
-  padding: 10px 15px;
-  border-radius: 6px;
-  cursor: pointer;
-}
-
-.save-btn {
-  background-color: #16a34a;
-  color: white;
-  border: none;
-  padding: 10px 15px;
-  border-radius: 6px;
-  cursor: pointer;
-}
-
-.cancel-btn:hover {
-  background-color: #4b5563;
-}
-
-.save-btn:hover {
-  background-color: #15803d;
-}
-</style>

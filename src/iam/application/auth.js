@@ -1,58 +1,64 @@
+import { permissionsForRole } from '../domain/permissions.js'
 import { defineStore } from 'pinia'
+import { authenticateDemoUser, validateDemoSession } from '../infrastructure/auth-service.js'
 
 export const useAuthStore = defineStore('auth', {
-    state: () => ({
-        user: null
-    }),
-
-    actions: {
-        loadUser() {
-            const savedUser = localStorage.getItem('user')
-
-            if (savedUser) {
-                this.user = JSON.parse(savedUser)
-            }
-        },
-
-        login(email, password) {
-            const users = [
-                {
-                    name: 'Dany',
-                    email: 'admin@bodego.com',
-                    password: '1234',
-                    role: 'Administrador'
-                },
-                {
-                    name: 'Mateo',
-                    email: 'empleado@bodego.com',
-                    password: '1234',
-                    role: 'Empleado'
-                }
-            ]
-
-            const userFound = users.find(
-                user =>
-                    user.email === email &&
-                    user.password === password
-            )
-
-            if (!userFound) {
-                return false
-            }
-
-            this.user = userFound
-
-            localStorage.setItem(
-                'user',
-                JSON.stringify(userFound)
-            )
-
-            return true
-        },
-
-        logout() {
-            this.user = null
-            localStorage.removeItem('user')
+  state: () => ({ user: null, initialized: false, error: null }),
+  getters: {
+    isAuthenticated: state => state.user !== null,
+    permissions: state => permissionsForRole(state.user?.role),
+    can() { return permission => this.isAuthenticated && this.permissions.includes(permission) }
+  },
+  actions: {
+    requirePermission(permission) {
+      if (!this.can(permission)) throw Object.assign(new Error('Access denied'), { messageKey: 'accessDeniedMessage' })
+    },
+    async loadUser() {
+      this.user = null
+      this.error = null
+      try {
+        const saved = localStorage.getItem('user')
+        if (saved) {
+          const user = await validateDemoSession(JSON.parse(saved))
+          if (!user) throw new Error('Invalid demo session')
+          // Sanitize sessions created by the previous demo implementation.
+          localStorage.setItem('user', JSON.stringify(user))
+          this.user = user
         }
+      } catch {
+        this.error = 'sessionRestoreFailed'
+        try { localStorage.removeItem('user') } catch { /* Storage can be unavailable. */ }
+      } finally {
+        this.initialized = true
+      }
+    },
+    async login(email, password) {
+      this.error = null
+      let user
+      try { user = await authenticateDemoUser(email, password) }
+      catch {
+        this.user = null
+        this.error = 'loginServiceUnavailable'
+        return false
+      }
+      if (!user) {
+        this.error = 'invalidCredentials'
+        return false
+      }
+      try {
+        localStorage.setItem('user', JSON.stringify(user))
+        this.user = user
+        return true
+      } catch {
+        this.user = null
+        this.error = 'sessionStorageFailed'
+        return false
+      }
+    },
+    logout() {
+      this.user = null
+      this.error = null
+      try { localStorage.removeItem('user') } catch { this.error = 'sessionStorageFailed' }
     }
+  }
 })
