@@ -2,7 +2,7 @@ import axios from 'axios'
 
 // Dedicated client: Inventory must never fall back to JSON Server.
 export const inventoryApi = axios.create({
-  baseURL: (import.meta.env.VITE_API_BASE_URL || 'http://localhost:5281').replace(/\/$/, '') + '/api/v1',
+  baseURL: (import.meta.env?.VITE_API_BASE_URL || 'http://localhost:5281').replace(/\/$/, '') + '/api/v1',
   timeout: 10000
 })
 export function inventoryError(error) {
@@ -11,6 +11,7 @@ export function inventoryError(error) {
 }
 export const getInventoryProducts = () => inventoryApi.get('/products')
 export const getInventoryProduct = id => inventoryApi.get(`/products/${encodeURIComponent(id)}`)
+export const getProductLots = id => inventoryApi.get(`/products/${encodeURIComponent(id)}/lots`)
 export const getLowStockProducts = () => inventoryApi.get('/products/low-stock')
 export const createInventoryProduct = product => inventoryApi.post('/products', product)
 export const getCategories = () => inventoryApi.get('/categories')
