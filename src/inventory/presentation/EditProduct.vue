@@ -12,7 +12,7 @@ const router = useRouter()
   <AppLayout>
     <div class="content inventory-page">
       <PageHeader :title="t('editProduct')" :description="t('editProductSubtitle')" />
-      <p class="panel" role="status">La API no ofrece actualización de productos. <Button @click="router.push('/products')">Volver a productos</Button></p>
+      <p class="panel" role="status">La edición de productos todavía no está disponible. <Button @click="router.push('/products')">Volver a productos</Button></p>
     </div>
   </AppLayout>
 </template>

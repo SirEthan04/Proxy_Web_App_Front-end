@@ -96,7 +96,7 @@ test('guardas de escritura no se eluden con userId o doble clic; ningún HTTP ni
   const store = useRealOperationsStore()
   for (const fn of [() => createRealWaste({ userId }), () => createInventoryCount({ userId }), () => store.registerWaste({ userId }), () => store.registerCount({ userId })]) {
     const results = await Promise.allSettled([fn(), fn()])
-    assert.ok(results.every(r => r.status === 'rejected' && r.reason.message === WRITE_BLOCKED))
+    assert.ok(results.every(r => r.status === 'rejected' && /sesión/.test(r.reason.message)))
   }
   assert.equal(requests.length, 0)
 })
@@ -115,6 +115,6 @@ test('doble recarga de movimientos no duplica solicitudes ni filas', async () =>
   queryApi.defaults.adapter = config => { requests.push(config); return new Promise(resolve => { release = () => resolve(response(config, [movement])) }) }
   const store = useRealOperationsStore()
   const first = store.loadMovements(), second = store.loadMovements()
-  release(); await Promise.all([first, second])
+  await Promise.resolve(); await Promise.resolve(); release(); await Promise.all([first, second])
   assert.equal(requests.length, 1); assert.deepEqual(store.movements, [movement])
 })

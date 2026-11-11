@@ -1,19 +1,6 @@
-// Temporary demo authentication. The backend must enforce identity and permissions.
-import { getUsers } from './user-api.js'
-import { USER_ROLES } from '../domain/user.js'
-
-const publicIdentity = account => account && Object.values(USER_ROLES).includes(account.role)
-  ? { name: account.name, email: account.email, role: account.role } : null
-
-export async function authenticateDemoUser(email, password) {
-  const { data: users } = await getUsers()
-  const account = users.find(user => user.email === email.trim() && user.password === password)
-  return publicIdentity(account)
-}
-
-export async function validateDemoSession(value) {
-  if (!value || typeof value !== 'object' || Array.isArray(value)) return null
-  const { data: users } = await getUsers()
-  const account = users.find(user => user.email === value.email && user.name === value.name && user.role === value.role)
-  return publicIdentity(account)
+import { queryApi } from '../../shared/infrastructure/query-client.js'
+export const loginUser = (email, password) => queryApi.post('/auth/login', { email: email.trim(), password })
+export const getCurrentUser = () => queryApi.get('/auth/me')
+export function authError(error) {
+  return ({ 400: 'Revisa el correo y la contraseña.', 401: 'El correo o la contraseña no son válidos, o la sesión venció.', 403: 'No tienes permisos para acceder a este recurso.', 429: 'Demasiados intentos. Espera un minuto antes de volver a intentar.' })[error.response?.status] || (error.isAxiosError ? 'No se pudo conectar con el servicio de autenticación.' : error.message)
 }

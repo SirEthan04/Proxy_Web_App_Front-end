@@ -5,6 +5,7 @@ import { useRoute, useRouter } from 'vue-router'
 import Button from 'primevue/button'
 import { t, translateValue } from '../../i18n.js'
 import { formatSoles } from '../../shared/presentation/utils/currency.js'
+import { stockStatus, formatQuantity } from '../../shared/presentation/utils/presentation.js'
 import { useProductsStore } from '../application/inventory.js'
 import AppLayout from '../../shared/presentation/layouts/AppLayout.vue'
 import PageHeader from '../../shared/presentation/components/PageHeader.vue'
@@ -45,11 +46,11 @@ watch(() => route.params.id, () => { loadData() }, { immediate: true })
           </div>
           <div>
             <dt>{{ t('stock') }}</dt>
-            <dd>{{ product.stock ?? t('notAvailable') }}</dd>
+            <dd>{{ formatQuantity(product.stock) }}</dd>
           </div>
           <div>
             <dt>{{ t('status') }}</dt>
-            <dd>{{ translateValue(product.status) || t('notAvailable') }}</dd>
+            <dd>{{ stockStatus(product) }}</dd>
           </div>
           <div>
             <dt>{{ t('expirationDate') }}</dt>

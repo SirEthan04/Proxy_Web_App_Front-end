@@ -1,3 +1,5 @@
+> Documento histórico de la entrega previa a JWT. Para el estado actual de identidad, contratos sin userId y escrituras habilitadas, consulta [IAM-FRONTEND-INTEGRATION.md](IAM-FRONTEND-INTEGRATION.md).
+
 # Integración de Operations
 
 ## Alcance y estado

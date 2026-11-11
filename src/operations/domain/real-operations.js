@@ -1,6 +1,5 @@
-export const WRITE_BLOCKED = 'Registro bloqueado: se requiere identidad real de IAM y autorización para escribir. La sesión de demostración no es válida para estas operaciones.'
-export const movementLabels = { Purchase: 'Compra', Sale: 'Venta', Waste: 'Merma', CountAdjustment: 'Ajuste por conteo' }
-export const countLabels = { Draft: 'Borrador', Confirmed: 'Confirmado', Cancelled: 'Cancelado' }
+export const WRITE_BLOCKED = 'Inicia sesión con un usuario autorizado para registrar operaciones.'
+export { movementLabels, countLabels } from '../../shared/presentation/utils/presentation.js'
 export function requireGuid(value) {
   if (typeof value !== 'string' || !/^[\da-f]{8}-[\da-f]{4}-[\da-f]{4}-[\da-f]{4}-[\da-f]{12}$/i.test(value) || /^0{8}-0{4}-0{4}-0{4}-0{12}$/.test(value)) throw new Error('Introduce un GUID válido y no vacío.')
   return value
@@ -29,7 +28,7 @@ export function prepareWaste(draft, products, lots) {
   if (quantity > product.stock || lot && quantity > lot.quantityAvailable) throw new Error('Stock insuficiente para registrar la merma.')
   const reason = draft.reason?.trim()
   if (!reason || reason.length > 255) throw new Error('El motivo es obligatorio y admite hasta 255 caracteres.')
-  // userId is deliberately absent until a real identity provider is integrated.
+  // The backend derives identity exclusively from the Bearer token.
   return { productId: product.id, lotId: lot?.id || null, quantity, reason }
 }
 export function prepareCount(draft, products, lots) {
