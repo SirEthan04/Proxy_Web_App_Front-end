@@ -1,4 +1,4 @@
-// Demo authorization policy. The future backend must enforce these permissions.
+// UI visibility only; ASP.NET Core enforces authorization on each protected endpoint.
 export const PERMISSIONS = Object.freeze({
   PURCHASES_CREATE: 'purchases.create',
   PURCHASES_READ: 'purchases.read',

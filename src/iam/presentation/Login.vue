@@ -18,7 +18,7 @@ const email = ref('')
 const password = ref('')
 const submitting = ref(false)
 const showError = key => toast.add({ severity: 'error', summary: t('errorTitle'), detail: t(key), life: 8000 })
-onMounted(() => { if (authStore.error) showError(authStore.error) })
+onMounted(() => { if (authStore.error) showError(authStore.error); else if (route.query.expired) showError('La sesión terminó. Inicia sesión nuevamente.') })
 const login = async () => {
   if (submitting.value) return
   if (!email.value || !password.value) { showError('requiredFields'); return }
@@ -33,7 +33,7 @@ const login = async () => {
       if (resolved.matched.length && resolved.meta.requiresAuth) target = resolved.fullPath
     }
     await router.replace(target)
-  } finally { submitting.value = false }
+  } finally { password.value = ''; submitting.value = false }
 }
 </script>
 <template>
@@ -52,7 +52,7 @@ const login = async () => {
         <div class="field"><label for="login-email">{{ t('email') }}</label><InputText id="login-email" v-model="email" type="email" autocomplete="username" :placeholder="t('emailPlaceholder')" aria-required="true" :disabled="submitting" /></div>
         <div class="field"><label for="login-password">{{ t('password') }}</label><InputText id="login-password" v-model="password" type="password" autocomplete="current-password" placeholder="********" aria-required="true" :disabled="submitting" /></div>
         <Button class="login-submit" type="submit" :disabled="submitting" :loading="submitting">{{ t('loginSubmit') }}<NavIcon name="arrow" /></Button>
-        <p class="demo-note">{{ t('demoAuthNotice') }}</p>
+        <p class="demo-note">Acceso con tu usuario real de BodeGo. La sesión se conserva solo en esta página; al recargar debes iniciar sesión nuevamente.</p>
       </form>
       <p class="login-footer">BodeGo <span aria-hidden="true">&#183;</span> {{ t('inventoryMadeSimple') }}</p>
     </main>

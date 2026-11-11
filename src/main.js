@@ -1,6 +1,7 @@
 import ConfirmationService from 'primevue/confirmationservice'
 import ToastService from 'primevue/toastservice'
-import { createApp } from 'vue'
+import { createApp, watch } from 'vue'
+import { session } from './iam/infrastructure/session.js'
 import { createPinia } from 'pinia'
 import PrimeVue from 'primevue/config'
 import Aura from '@primeuix/themes/aura'
@@ -26,6 +27,11 @@ app.use(PrimeVue, {
   },
 })
 app.use(router)
+watch(() => session.accessToken, (token, previous) => {
+  if (!token && previous && router.currentRoute.value.meta.requiresAuth) {
+    router.replace({ path: '/login', query: { expired: '1', redirect: router.currentRoute.value.fullPath } })
+  }
+})
 app.use(i18n)
 
 app.mount('#app')

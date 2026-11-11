@@ -5,42 +5,58 @@ import InputText from 'primevue/inputtext'
 import AppLayout from '../../shared/presentation/layouts/AppLayout.vue'
 import PageHeader from '../../shared/presentation/components/PageHeader.vue'
 import RequestState from '../../shared/presentation/components/RequestState.vue'
+import RecordDetails from '../../shared/presentation/components/RecordDetails.vue'
 import { useProductsStore } from '../../inventory/application/inventory.js'
 import { useRealOperationsStore } from '../application/real-operations.js'
-import { movementLabels, countLabels } from '../domain/real-operations.js'
+import { movementLabels, statusLabel, typeLabel, recordReference, formatDate, formatQuantity, filterMovements } from '../../shared/presentation/utils/presentation.js'
+import { useRecordLabels } from '../../shared/presentation/utils/record-labels.js'
 import PreparedOperationForm from './components/PreparedOperationForm.vue'
-const store = useRealOperationsStore(), inventory = useProductsStore()
-const tab = ref('movements'), search = ref(''), countId = ref('')
-const productName = id => !inventory.loading && !inventory.loadError ? inventory.products.find(p => p.id === id)?.name || id : id
-const rows = computed(() => store.movements.filter(m => [m.productId, productName(m.productId), m.sourceId, m.movementType].some(v => v.toLowerCase().includes(search.value.toLowerCase().trim()))))
-const loadInventory = async () => { try { await inventory.loadProducts() } catch { /* RequestState displays the error. */ } }
+const store = useRealOperationsStore(), inventory = useProductsStore(), labels = useRecordLabels()
+const tab = ref('movements'), search = ref(''), countId = ref(''), type = ref(''), from = ref(''), to = ref('')
+const details = ref({}), showDetails = ref(false)
+const query = computed(() => filterMovements(store.movements, { search: search.value, type: type.value, from: from.value, to: to.value }, inventory.loadError ? [] : inventory.products))
+const loadInventory = async () => { try { await inventory.loadProducts(); await labels.loadRelated() } catch { /* RequestState displays catalog errors. */ } }
 const load = () => Promise.allSettled([store.loadMovements(), loadInventory()])
+function show(fields) { details.value = fields; showDetails.value = true }
+function movementDetails(m) {
+  show({ 'Producto': labels.product(m.productId), 'Tipo': typeLabel(m.movementType), 'Cantidad': formatQuantity(m.quantityDelta, true), 'Fecha': formatDate(m.createdAt), 'Responsable': labels.responsible(m.userId), 'Lote': labels.lot(m.lotId), 'Identificador del movimiento': m.id, 'Identificador del producto': m.productId, 'Identificador del lote': m.lotId, 'Identificador del responsable': m.userId, 'Operación de origen': recordReference(m.sourceType, m.sourceId), 'Identificador de origen': m.sourceId, 'Fecha original': m.createdAt })
+}
 onMounted(load)
 </script>
 <template>
   <AppLayout><div class="content">
-    <PageHeader title="Movimientos y conteos" description="Operaciones registradas en el backend ASP.NET Core."><template #actions><Button class="cancel-btn" :disabled="store.loadingMovements || inventory.loading || store.loadingCount" @click="load">Recargar movimientos y productos</Button></template></PageHeader>
-    <div class="alert-filter-buttons" role="group" aria-label="Tipo de consulta"><Button :outlined="tab !== 'movements'" @click="tab = 'movements'">Movimientos</Button><Button :outlined="tab !== 'counts'" @click="tab = 'counts'">Conteos físicos</Button></div>
+    <PageHeader title="Movimientos y conteos" description="Consulta las entradas, salidas y conteos de tu bodega."><template #actions><Button class="cancel-btn" :disabled="store.loadingMovements || inventory.loading || store.loadingCount" @click="load">Actualizar</Button></template></PageHeader>
+    <div class="alert-filter-buttons" role="group" aria-label="Tipo de consulta"><Button :outlined="tab !== 'movements'" :aria-pressed="tab === 'movements'" @click="tab = 'movements'">Movimientos</Button><Button :outlined="tab !== 'counts'" :aria-pressed="tab === 'counts'" @click="tab = 'counts'">Conteos físicos</Button></div>
     <RequestState :loading="inventory.loading" :error="inventory.loadError" @retry="loadInventory" />
-    <p v-if="inventory.loadError" class="report-notice">Los productos se muestran por GUID hasta recuperar el catálogo.</p>
     <template v-if="tab === 'movements'">
-      <p class="panel">Solo lectura: los movimientos se generan en el backend desde sus operaciones de origen. No se registran entradas o salidas manuales desde esta pantalla.</p>
-      <div class="panel field"><label for="movement-search">Buscar producto, tipo u origen</label><InputText id="movement-search" v-model="search" type="search" /></div>
+      <section class="panel report-filters">
+        <div class="field"><label for="movement-search">Buscar producto u operación</label><InputText id="movement-search" v-model="search" type="search" placeholder="Nombre del producto o referencia" /></div>
+        <div class="field"><label for="movement-type">Tipo</label><select id="movement-type" v-model="type"><option value="">Todos los tipos</option><option v-for="(label, key) in movementLabels" :key="key" :value="key">{{ label }}</option></select></div>
+        <div class="field"><label for="movement-from">Desde</label><InputText id="movement-from" v-model="from" type="date" /></div>
+        <div class="field"><label for="movement-to">Hasta</label><InputText id="movement-to" v-model="to" type="date" /></div>
+        <Button text @click="search = ''; type = ''; from = ''; to = ''">Limpiar filtros</Button>
+      </section>
+      <p v-if="query.error" class="field-error" role="alert">{{ query.error }}</p>
       <RequestState :loading="store.loadingMovements" :error="store.movementsError" @retry="store.loadMovements()" />
-      <div v-if="!store.loadingMovements && !store.movementsError" class="table-scroll" role="region" aria-label="Movimientos" tabindex="0"><table><thead><tr><th>GUID</th><th>Producto</th><th>Lote</th><th>Tipo</th><th>Cantidad (variación)</th><th>Fecha</th><th>Origen</th></tr></thead><tbody>
-        <tr v-for="m in rows" :key="m.id"><td>{{ m.id }}</td><td><router-link :to="'/products/' + m.productId">{{ productName(m.productId) }}</router-link><small class="cell-secondary">{{ m.productId }}</small></td><td>{{ m.lotId || 'Sin lote' }}</td><td><span class="status-pill">{{ movementLabels[m.movementType] || m.movementType }}</span></td><td>{{ m.quantityDelta }}</td><td>{{ m.createdAt }}</td><td>{{ m.sourceType }}<small class="cell-secondary">{{ m.sourceId }}</small></td></tr>
-        <tr v-if="!rows.length"><td colspan="7" class="empty" role="status">{{ store.movements.length ? 'No hay coincidencias para la búsqueda.' : 'No hay movimientos registrados.' }}</td></tr>
-      </tbody></table></div>
+      <template v-if="!store.loadingMovements && !store.movementsError && !query.error">
+        <p class="results-summary" aria-live="polite">{{ query.rows.length }} movimientos · horario de Perú</p>
+        <div class="table-scroll" role="region" aria-label="Movimientos" tabindex="0"><table class="readable-table"><thead><tr><th>Producto</th><th>Tipo</th><th>Cantidad</th><th>Fecha</th><th>Origen</th><th>Acciones</th></tr></thead><tbody>
+          <tr v-for="m in query.rows" :key="m.id"><td><router-link class="name-truncate" :title="labels.product(m.productId)" :to="'/products/' + m.productId">{{ labels.product(m.productId) }}</router-link></td><td><span class="status-pill">{{ typeLabel(m.movementType) }}</span></td><td class="quantity-cell" :class="m.quantityDelta > 0 ? 'quantity-positive' : 'quantity-negative'">{{ formatQuantity(m.quantityDelta, true) }}</td><td class="date-cell">{{ formatDate(m.createdAt) }}</td><td>{{ recordReference(m.sourceType, m.sourceId) }}</td><td><Button text @click="movementDetails(m)">Ver detalles</Button></td></tr>
+          <tr v-if="!query.rows.length"><td colspan="6" class="empty" role="status">{{ store.movements.length ? 'No hay movimientos para estos filtros.' : 'No hay movimientos registrados.' }}</td></tr>
+        </tbody></table></div>
+      </template>
     </template>
     <template v-else>
-      <p class="panel">El backend permite consultar un conteo por GUID; no ofrece un listado de conteos. Los conteos registran diferencias sin ajustar stock ni generar movimientos.</p>
-      <form class="panel report-filters" @submit.prevent="store.loadCount(countId)"><div class="field"><label for="count-id">GUID de un conteo existente</label><InputText id="count-id" v-model="countId" :disabled="store.loadingCount" /></div><Button type="submit" :disabled="store.loadingCount">Consultar / Recargar conteo</Button></form>
+      <p class="panel">Compara lo que hay en tu bodega con las existencias registradas. El conteo registra diferencias; no cambia el stock.</p>
+      <details class="panel"><summary>Consultar un conteo anterior</summary><form class="report-filters" @submit.prevent="store.loadCount(countId)"><div class="field"><label for="count-id">Identificador completo del conteo</label><InputText id="count-id" v-model="countId" :disabled="store.loadingCount" placeholder="Pega el identificador del registro" /></div><Button type="submit" :disabled="store.loadingCount">Consultar conteo</Button></form></details>
       <RequestState :loading="store.loadingCount" :error="store.countError" @retry="store.loadCount(countId)" />
       <section v-if="store.count && !store.loadingCount && !store.countError" class="panel">
-        <h2>Conteo {{ store.count.id }}</h2><p>{{ countLabels[store.count.status] || store.count.status }} — {{ store.count.countedAt }}</p><p>Usuario: {{ store.count.userId }}</p><p>{{ store.count.notes || 'Sin notas' }}</p>
-        <div class="table-scroll" role="region" aria-label="Detalles del conteo" tabindex="0"><table><thead><tr><th>Producto</th><th>Lote</th><th>Esperado</th><th>Físico</th><th>Diferencia</th></tr></thead><tbody><tr v-for="item in store.count.items" :key="item.id"><td>{{ productName(item.productId) }}<small class="cell-secondary">{{ item.productId }}</small></td><td>{{ item.lotId || 'Total del producto' }}</td><td>{{ item.expectedQuantity }}</td><td>{{ item.countedQuantity }}</td><td>{{ item.difference }}</td></tr><tr v-if="!store.count.items.length"><td colspan="5" class="empty">El conteo no tiene detalles.</td></tr></tbody></table></div>
+        <div class="section-heading"><h2>{{ recordReference('count', store.count.id) }}</h2><Button text @click="show({ 'Identificador del conteo': store.count.id, 'Responsable': labels.responsible(store.count.userId), 'Identificador del responsable': store.count.userId, 'Fecha original': store.count.countedAt })">Ver datos del registro</Button></div>
+        <p><span class="status-pill">{{ statusLabel(store.count.status, 'count') }}</span> · {{ formatDate(store.count.countedAt) }}</p><p>Responsable: {{ labels.responsible(store.count.userId) }}</p><p>{{ store.count.notes || 'Sin observaciones' }}</p>
+        <div class="table-scroll" role="region" aria-label="Resultado del conteo" tabindex="0"><table class="readable-table"><thead><tr><th>Producto</th><th>Lote</th><th>Stock registrado</th><th>Cantidad contada</th><th>Diferencia</th><th>Acciones</th></tr></thead><tbody><tr v-for="item in store.count.items" :key="item.id"><td><span class="name-truncate" :title="labels.product(item.productId)">{{ labels.product(item.productId) }}</span></td><td>{{ item.lotId ? labels.lot(item.lotId) : 'Todo el producto' }}</td><td>{{ formatQuantity(item.expectedQuantity) }}</td><td>{{ formatQuantity(item.countedQuantity) }}</td><td class="quantity-cell" :class="item.difference < 0 ? 'quantity-negative' : ''">{{ formatQuantity(item.difference, true) }}</td><td><Button text @click="show({ 'Identificador del detalle': item.id, 'Identificador del producto': item.productId, 'Identificador del lote': item.lotId })">Ver detalles</Button></td></tr><tr v-if="!store.count.items.length"><td colspan="6" class="empty">Este conteo no tiene detalles.</td></tr></tbody></table></div>
       </section>
       <PreparedOperationForm kind="count" />
     </template>
+    <RecordDetails v-model:visible="showDetails" :fields="details" />
   </div></AppLayout>
 </template>
