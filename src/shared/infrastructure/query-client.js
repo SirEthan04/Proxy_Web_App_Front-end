@@ -1,7 +1,8 @@
+import { apiBase } from './api-config.js'
 import axios from 'axios'
 import { attachBearer } from './bearer.js'
 export const queryApi = attachBearer(axios.create({
-  baseURL: (import.meta.env?.VITE_API_BASE_URL || 'http://localhost:5281').replace(/\/$/, '') + '/api/v1',
+  baseURL: apiBase,
   timeout: 10000
 }))
 export function queryError(error) {

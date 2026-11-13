@@ -1,9 +1,10 @@
+import { apiBase } from '../../shared/infrastructure/api-config.js'
 import axios from 'axios'
 import { attachBearer } from '../../shared/infrastructure/bearer.js'
 
 // Dedicated client: Inventory must never fall back to JSON Server.
 export const inventoryApi = attachBearer(axios.create({
-  baseURL: (import.meta.env?.VITE_API_BASE_URL || 'http://localhost:5281').replace(/\/$/, '') + '/api/v1',
+  baseURL: apiBase,
   timeout: 10000
 }))
 export function inventoryError(error) {

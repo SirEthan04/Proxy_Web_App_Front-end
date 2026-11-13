@@ -1,6 +1,6 @@
+import { apiBase } from './api-config.js'
 import axios from 'axios'
 import { session, clearSession } from '../../iam/infrastructure/session.js'
-const apiBase = (import.meta.env?.VITE_API_BASE_URL || 'http://localhost:5281').replace(/\/$/, '') + '/api/v1'
 const allowed = new URL(apiBase)
 export function attachBearer(client) {
   client.interceptors.request.use(config => {
