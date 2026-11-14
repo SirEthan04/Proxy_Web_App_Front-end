@@ -56,16 +56,15 @@ La interfaz conserva español, fechas `es-PE` en `America/Lima`, importes en sol
 
 Los servicios presentan errores 400 (datos), 401 (sesión), 403 (permisos), 404 (recurso), 409 (conflicto), 500 y conexión/CORS en español. Un fallo al refrescar después de confirmar se informa sin repetir la escritura.
 
-## Pruebas y compilación
+## Compilación y verificaciones
 
 ```sh
-npm test
 npm run build
 npm audit
 git diff --check
 ```
 
-Las pruebas Node usan fixtures y adaptadores Axios mock; no necesitan backend ni ejecutan POST reales a MySQL. Cubren JWT, roles, rutas protegidas, servicios, contratos, operaciones y presentación, más configuración de producción. Para compilar es obligatorio proporcionar `VITE_API_BASE_URL` con el origen HTTPS real mediante el entorno o `.env.production.local` (ignorado). `npm run preview` permite revisar `dist` localmente; no es servidor de producción.
+Para compilar es obligatorio proporcionar `VITE_API_BASE_URL` con el origen HTTPS real mediante el entorno o `.env.production.local` (ignorado). `npm run preview` permite revisar `dist` localmente; no es servidor de producción.
 
 ## Despliegue en Render Static Site
 
@@ -86,5 +85,5 @@ No se necesita Docker ni un proceso Node para servir el frontend. Referencias: [
 - Los antiguos stores/servicios de productos, Commercial y Operations, y el componente QuickProduct no están conectados a las pantallas actuales. Se conservan por compatibilidad. Todo el cliente legacy rechaza solicitudes en producción, aunque se configure su variable.
 - Para desarrollo legacy únicamente: `npm run server` inicia JSON Server en 3001. `server/seed.json` es una semilla ficticia; `server/work-db.json` local se crea solo si falta y está ignorado. No usar credenciales ni datos reales. No es necesario para login ni módulos integrados.
 - Inventory no ofrece edición/borrado real; no se simula éxito. Conteos solo admite consulta por GUID, sin endpoint de listado. Alertas son de lectura; reportes no inventan series temporales ni métricas ausentes.
-- Las pruebas mock no sustituyen aceptación visual, CORS, login real y efectos de escrituras con el backend definitivo. El bundle puede superar el umbral recomendado de Vite.
+- La aceptación visual, CORS, login real y efectos de escrituras requieren validación con el backend definitivo. El bundle puede superar el umbral recomendado de Vite.
 - Los registros identificables como desarrollo no autorizan su eliminación. Conservar historial, relaciones y stock; cualquier depuración de datos requiere una auditoría y autorización separadas.
