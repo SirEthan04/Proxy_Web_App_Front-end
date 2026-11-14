@@ -11,11 +11,13 @@ import { computed, onMounted } from 'vue'
 import { useUsersStore } from '../application/users.js'
 
 const usersStore = useUsersStore()
+const legacyDisabled = import.meta.env.PROD
 
 const loading = computed(() => usersStore.loading)
 const loadError = computed(() => usersStore.loadError)
 const dataReady = computed(() => !loading.value && !loadError.value)
 const loadData = async () => {
+  if (legacyDisabled) return
   await Promise.allSettled([usersStore.loadUsers()])
 }
 onMounted(loadData)
@@ -25,10 +27,11 @@ onMounted(loadData)
   <AppLayout>
     <div class="content">
       <PageHeader :title="t('users')" :description="t('usersSubtitle')" />
-      <RequestState :loading="loading" :error="loadError" @retry="loadData" />
+      <p v-if="legacyDisabled" role="status">La administración de usuarios legacy no está disponible en producción. Su integración con la API BodeGo está pendiente.</p>
+      <RequestState v-else :loading="loading" :error="loadError" @retry="loadData" />
       <p class="table-hint">{{ t('tableScrollHint') }}</p>
       <div class="table-scroll" role="region" :aria-label="t('tableScrollHint')" tabindex="0">
-        <table v-if="dataReady">
+        <table v-if="dataReady && !legacyDisabled">
           <thead>
             <tr>
               <th>{{ t('id') }}</th>

@@ -1,0 +1,8 @@
+.commercial-page .pos-product-info,
+.commercial-page .pos-line-heading > h3,
+.commercial-page .pos-document-line > div,
+.commercial-page .pos-document-summary > div { min-width: 0; overflow-wrap: anywhere; }
+.commercial-page .pos-line > .field { margin-bottom: 16px; }
+.commercial-page .field select { max-width: 100%; text-overflow: ellipsis; }
+.commercial-page .pos-document-line p { overflow-wrap: anywhere; }
+.commercial-page .pos-document-line > strong { flex-shrink: 0; }

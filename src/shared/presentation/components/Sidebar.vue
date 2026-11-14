@@ -1,5 +1,5 @@
 <script setup>
-import { useCommercialStore } from '../../../commercial/application/commercial.js'
+import { useCommercialStore } from '../../../commercial/application/real-commercial.js'
 import NavIcon from './NavIcon.vue'
 
 import { PERMISSIONS } from '../../../iam/domain/permissions.js'
@@ -9,10 +9,9 @@ import { t } from '../../../i18n.js'
 import { useRoute, useRouter } from 'vue-router'
 import { computed } from 'vue'
 import { useToast } from 'primevue/usetoast'
-import { useProductsStore } from '../../../inventory/application/products.js'
+import { useProductsStore } from '../../../inventory/application/inventory.js'
 import { useUsersStore } from '../../../iam/application/users.js'
-import { useOperationsStore } from '../../../operations/application/operations.js'
-import { useWasteStore } from '../../../operations/application/waste.js'
+import { useRealOperationsStore } from '../../../operations/application/real-operations.js'
 import { useAuthStore } from '../../../iam/application/auth.js'
 
 const router = useRouter()
@@ -20,12 +19,12 @@ const route = useRoute()
 const authStore = useAuthStore()
 
 const toast = useToast()
-const stores = [useCommercialStore(), useProductsStore(), useUsersStore(), useOperationsStore(), useWasteStore()]
+const stores = [useCommercialStore(), useProductsStore(), useUsersStore(), useRealOperationsStore()]
 const busy = computed(() => stores.some(store => store.saving || store.submitting))
 const logout = () => {
   if (busy.value) return
   authStore.logout()
-  for (const store of stores) store.clearSessionData()
+  for (const store of stores) store.$reset()
   if (authStore.error) toast.add({ severity: 'error', summary: t('errorTitle'), detail: t(authStore.error), life: 8000 })
   router.replace('/login')
 }
@@ -61,6 +60,6 @@ const navigationGroups = computed(() => [
         <router-link v-for="item in group.items" :key="item.to" :to="item.to" :class="{ 'nav-item-active': route.path === item.to || route.path.startsWith(item.to + '/') }" @click="emit('navigate')"><NavIcon :name="item.icon" /><span>{{ t(item.label) }}</span></router-link>
       </div>
     </nav>
-    <div class="sidebar-bottom"><p>{{ t('demoWorkspace') }}</p><Button class="logout" :disabled="busy" @click="logout"><NavIcon name="logout" />{{ t('logout') }}</Button></div>
+    <div class="sidebar-bottom"><p>Tu bodega, organizada</p><Button class="logout" :disabled="busy" @click="logout"><NavIcon name="logout" />{{ t('logout') }}</Button></div>
   </aside>
 </template>

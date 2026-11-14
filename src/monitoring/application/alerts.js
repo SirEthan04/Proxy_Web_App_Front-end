@@ -1,47 +1,23 @@
-export const getOutOfStockProducts = (products) => {
-    return products.filter(
-        product => Number(product.stock) <= 0
-    )
-}
-
-export const getLowStockProducts = (products) => {
-    return products.filter(
-        product =>
-            Number(product.stock) > 0 &&
-            Number(product.stock) <= 5
-    )
-}
-
-export const getExpiredProducts = (products) => {
-    const today = new Date()
-
-    return products.filter(product => {
-        if (!product.expirationDate) {
-            return false
-        }
-
-        const expirationDate = new Date(product.expirationDate)
-
-        return expirationDate < today
-    })
-}
-
-export const getExpiringProducts = (products) => {
-    const today = new Date()
-
-    return products.filter(product => {
-        if (!product.expirationDate) {
-            return false
-        }
-
-        const expirationDate = new Date(product.expirationDate)
-
-        const difference = expirationDate - today
-
-        const days = Math.ceil(
-            difference / (1000 * 60 * 60 * 24)
-        )
-
-        return days >= 0 && days <= 7
-    })
-}
+import { defineStore } from 'pinia'
+import { getAlerts, getAlert } from '../infrastructure/alerts-api.js'
+import { adaptAlerts, adaptAlert } from '../infrastructure/alerts.assembler.js'
+import { queryError } from '../../shared/infrastructure/query-client.js'
+export const useAlertsStore = defineStore('real-alerts', {
+  state: () => ({ alerts: [], loading: false, loadError: null, detail: null, detailLoading: false, detailError: null }),
+  actions: {
+    async loadAlerts() {
+      if (this.loading) return
+      this.loading = true; this.loadError = null; this.alerts = []
+      try { this.alerts = adaptAlerts((await getAlerts()).data) }
+      catch (error) { this.loadError = queryError(error) }
+      finally { this.loading = false }
+    },
+    async loadDetail(id) {
+      if (this.detailLoading) return
+      this.detailLoading = true; this.detailError = null; this.detail = null
+      try { this.detail = adaptAlert((await getAlert(id)).data) }
+      catch (error) { this.detailError = queryError(error) }
+      finally { this.detailLoading = false }
+    }
+  }
+})

@@ -1,64 +1,46 @@
-import { permissionsForRole } from '../domain/permissions.js'
 import { defineStore } from 'pinia'
-import { authenticateDemoUser, validateDemoSession } from '../infrastructure/auth-service.js'
-
+import { permissionsForRole } from '../domain/permissions.js'
+import { loginUser, getCurrentUser, authError } from '../infrastructure/auth-service.js'
+import { session, clearSession, validSession, acceptToken, acceptUser, requireRealSession, sessionRevision } from '../infrastructure/session.js'
 export const useAuthStore = defineStore('auth', {
-  state: () => ({ user: null, initialized: false, error: null }),
+  state: () => ({ session, initialized: false, error: null, submitting: false }),
   getters: {
-    isAuthenticated: state => state.user !== null,
-    permissions: state => permissionsForRole(state.user?.role),
+    user: state => state.session.user,
+    isAuthenticated: () => validSession(),
+    permissions: state => permissionsForRole(state.session.user?.role),
     can() { return permission => this.isAuthenticated && this.permissions.includes(permission) }
   },
   actions: {
     requirePermission(permission) {
-      if (!this.can(permission)) throw Object.assign(new Error('Access denied'), { messageKey: 'accessDeniedMessage' })
+      requireRealSession()
+      if (!this.can(permission)) throw new Error('No tienes permisos para realizar esta operación.')
     },
     async loadUser() {
-      this.user = null
       this.error = null
       try {
-        const saved = localStorage.getItem('user')
-        if (saved) {
-          const user = await validateDemoSession(JSON.parse(saved))
-          if (!user) throw new Error('Invalid demo session')
-          // Sanitize sessions created by the previous demo implementation.
-          localStorage.setItem('user', JSON.stringify(user))
-          this.user = user
-        }
-      } catch {
-        this.error = 'sessionRestoreFailed'
-        try { localStorage.removeItem('user') } catch { /* Storage can be unavailable. */ }
-      } finally {
-        this.initialized = true
-      }
+        if (session.accessToken) acceptUser((await getCurrentUser()).data)
+      } catch (error) { clearSession(); this.error = authError(error) }
+      finally { this.initialized = true }
     },
     async login(email, password) {
-      this.error = null
-      let user
-      try { user = await authenticateDemoUser(email, password) }
-      catch {
-        this.user = null
-        this.error = 'loginServiceUnavailable'
-        return false
-      }
-      if (!user) {
-        this.error = 'invalidCredentials'
-        return false
-      }
+      if (this.submitting) return false
+      this.submitting = true; this.error = null; clearSession()
+      const revision = sessionRevision()
       try {
-        localStorage.setItem('user', JSON.stringify(user))
-        this.user = user
+        if (!email.trim() || email.trim().length > 180 || !password || password.length > 128) throw new Error('Introduce correo y contraseña válidos.')
+        const result = (await loginUser(email, password)).data
+        if (revision !== sessionRevision()) return false
+        acceptToken(result)
+        const user = (await getCurrentUser()).data
+        if (revision !== sessionRevision()) return false
+        acceptUser(user)
         return true
-      } catch {
-        this.user = null
-        this.error = 'sessionStorageFailed'
-        return false
-      }
+      } catch (error) { clearSession(); this.error = authError(error); return false }
+      finally { this.initialized = true; this.submitting = false }
     },
     logout() {
-      this.user = null
-      this.error = null
-      try { localStorage.removeItem('user') } catch { this.error = 'sessionStorageFailed' }
+      clearSession(); this.error = null; this.initialized = true
+      try { globalThis.localStorage?.removeItem('user') } catch { /* Old demo identity is never read. */ }
     }
   }
 })

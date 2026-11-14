@@ -1,0 +1,31 @@
+.name-truncate { display: inline-block; max-width: min(28ch, 100%); vertical-align: middle; white-space: nowrap; text-overflow: ellipsis; overflow: hidden; }
+.readable-table { width: 100%; }
+.readable-table th, .readable-table td { padding: 16px 18px; vertical-align: middle; }
+.readable-table th { color: #43565e; font-size: .82rem; }
+.readable-table tbody tr:hover { background: #f5f8f6; }
+.date-cell { white-space: nowrap; font-variant-numeric: tabular-nums; }
+.quantity-cell { white-space: nowrap; font-variant-numeric: tabular-nums; font-weight: 600; }
+.quantity-positive { color: #166534; }
+.quantity-negative { color: #a32323; }
+.muted-copy { color: #4b616a; line-height: 1.6; }
+.record-detail-grid { margin: 0; display: grid; gap: 18px; }
+.record-detail-grid > div { min-width: 0; border-bottom: 1px solid #e0e7e4; padding-bottom: 12px; }
+.record-detail-grid dt { color: #4b616a; font-size: .85rem; margin-bottom: 6px; }
+.record-detail-grid dd { margin: 0; overflow-wrap: anywhere; user-select: text; line-height: 1.5; }
+.count-preview { display: flex; flex-wrap: wrap; gap: 24px; padding: 18px; border: 1px solid #d6e3dc; border-radius: 10px; background: #f4f8f5; }
+.count-preview > div { display: grid; gap: 8px; min-width: 160px; }
+.count-preview span { color: #43565e; font-size: .86rem; }
+.count-preview strong { font-variant-numeric: tabular-nums; }
+.pos-product h2, .pos-line-heading h3 { overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow-wrap: anywhere; }
+.pos-document-line > div { min-width: 0; }
+.pos-document-line a { overflow-wrap: anywhere; }
+select { max-width: 100%; text-overflow: ellipsis; }
+summary { cursor: pointer; line-height: 1.5; }
+.p-button:focus-visible, a:focus-visible, summary:focus-visible, select:focus-visible { outline: 3px solid #376f57; outline-offset: 3px; }
+@media (max-width: 640px) {
+  .readable-table th, .readable-table td { padding: 12px; }
+  .name-truncate { max-width: 22ch; }
+  .count-preview { gap: 16px; }
+  .report-filters .field { min-width: 0; }
+  .form-actions { flex-wrap: wrap; gap: 10px; }
+}

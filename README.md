@@ -1,72 +1,90 @@
 # BodeGo
 
-Prototipo universitario con Vue 3, Vite, Pinia, Axios, PrimeVue y JSON Server.
+Frontend para gestionar inventario y operaciones de una bodega, conectado a una API ASP.NET Core .NET 10 con JWT y MySQL. Vue no administra la base de datos directamente.
 
-## Instalación e inicio
+## Tecnologías y arquitectura
 
-Instalar Node.js 22.12 o posterior de la rama 22, o Node.js 24, con npm.
+Vue 3, Vite 7, Pinia, Axios, PrimeVue 4 y Vue Router. Los seis Bounded Contexts en `src/` son IAM, Inventory, Commercial, Operations, Monitoring y Reporting. Cada módulo separa dominio, aplicación, infraestructura y presentación; `shared` reúne HTTP, componentes y utilidades.
+
+## Requisitos e inicio local
+
+Node.js 22.12+ de la rama 22 o Node.js 24 y npm. Backend compatible iniciado por separado y CORS autorizado para `http://localhost:5174`.
 
 ```sh
-git clone --branch feature/commercial-purchases-sales https://github.com/SirEthan04/Proxy_Web_App_Front-end.git
-cd Proxy_Web_App_Front-end
 npm ci
 ```
 
-Terminal 1:
-
-```sh
-npm run server
-```
-
-JSON Server: http://localhost:3001. Expone `/products`, `/users`, `/operations`, `/wastes`, `/purchases` y `/sales`. También conserva la reescritura `/api/v1/*` en `scripts/server.mjs`.
-
-Terminal 2:
+Copiar `.env.example` a `.env.development.local` y ajustar la URL pública del backend. El archivo local está ignorado y no debe publicarse.
 
 ```sh
 npm run dev
 ```
 
-Abrir manualmente http://localhost:5174 en Brave, Chrome, Edge o Firefox. No requiere un perfil especial ni abre el navegador automáticamente. Ambos puertos son fijos; si están ocupados, detener el servicio anterior desde su terminal. No se finalizan procesos ajenos. Ctrl+C en cada terminal detiene su servicio. Si PowerShell bloquea npm.ps1, usar npm.cmd.
+Abrir `http://localhost:5174`. El puerto es fijo. En PowerShell se puede usar `npm.cmd` si la política bloquea `npm.ps1`. Reiniciar Vite después de cambiar variables.
 
-## Datos y recuperación
+## Variables públicas
 
-`server/seed.json` contiene seis productos y dos usuarios ficticios; compras, ventas, movimientos y mermas comienzan vacíos. El primer arranque crea `server/work-db.json` desde la semilla únicamente si falta. Los siguientes arranques conservan los datos; una base incompleta o corrupta se conserva y produce un error. No se renumeran identificadores: la columna N.º representa la posición visible al ordenar o filtrar.
-
-| Rol | Correo | Clave de demostración |
+| Variable | Desarrollo | Producción |
 | --- | --- | --- |
-| Administrador | admin@bodego.com | 1234 |
-| Empleado | empleado@bodego.com | 1234 |
+| `VITE_API_BASE_URL` | Origen de la API; por defecto `http://localhost:5281` | Obligatoria: origen HTTPS real asignado al backend en Render |
+| `VITE_LEGACY_API_BASE_URL` | Opcional, JSON Server local en `http://localhost:3001` | No configurar: cliente deshabilitado |
 
-Para respaldar: detener ambos servicios y copiar `server/work-db.json` fuera del proyecto. Para recuperar: detener los servicios, respaldar primero la base actual y copiar la copia elegida sobre ese archivo. No publicar bases locales, respaldos, perfiles ni secretos. No hay comando de reinicio destructivo.
+La URL principal debe contener solo el origen, sin `/api/v1`, rutas, credenciales, query ni fragmentos. Los clientes añaden `/api/v1` una vez. El build rechaza URL ausente, HTTP o localhost en producción. No hay URL definitiva de producción todavía. Cambiar estas variables requiere recompilar: Vite las incorpora al JavaScript público. Nunca colocar claves JWT, contraseñas, tokens o conexiones MySQL en variables `VITE_`.
 
-El navegador conserva sesión y seguimientos de operaciones inciertas en localStorage. No borrar esos seguimientos para desbloquear operaciones ni reenviar escrituras inciertas automáticamente. El uso normal funciona con almacenamiento vacío y no depende de un perfil concreto.
+## Autenticación y permisos
 
-JSON Server es un backend de demostración: expone usuarios y no proporciona autenticación real, autorización en servidor ni transacciones seguras. No utilizar datos ni claves reales.
+Login envía `{ email, password }` a `POST /api/v1/auth/login` y valida la identidad mediante `GET /api/v1/auth/me`. JWT, vencimiento e identidad permanecen solo en memoria: recargar o cerrar la página exige iniciar sesión de nuevo. No hay refresh; logout elimina la sesión local y no revoca tokens del servidor.
 
-## Estructura activa
+Axios agrega Bearer exclusivamente al origen configurado y prefijo `/api/v1`, excepto login. Nunca al cliente legacy ni a otros dominios. Expiración o 401 autenticado limpia la sesión; 403 muestra falta de permisos. Vue Router usa `createWebHistory` y guardas de autenticación/permisos. Administrador tiene todos los permisos de interfaz; Empleado puede operar compras, ventas, mermas y conteos, sin reportes ni administración. El backend aplica la autorización definitiva.
 
-- `src/`: interfaz, roles, validaciones, reglas de negocio, traducciones y protección de stock.
-- `public/`: recursos públicos.
-- `server/seed.json`: semilla versionada para instalaciones nuevas.
-- `server/work-db.json`: datos locales persistentes, excluidos de Git.
-- `scripts/server.mjs`: arranque independiente de JSON Server y rutas.
-- `scripts/local-data.mjs`: creación segura de la base si no existe.
-- `scripts/ports.mjs`: comprobación del puerto sin cambiarlo ni cerrar otros procesos.
-- `vite.config.js`: Vite en localhost:5174, sin apertura automática.
+## Módulos y endpoints implementados
 
-Los históricos, importadores, herramientas de demostración y pruebas se archivaron fuera del proyecto durante la limpieza de presentación. No son requisitos del arranque. No se mantienen pruebas automatizadas en esta entrega.
+Rutas API relativas a `/api/v1`:
 
-## Validación de presentación
+| Contexto | Funciones y endpoints |
+| --- | --- |
+| IAM | Login, sesión y roles: `/auth/login`, `/auth/me` |
+| Inventory | Catálogo, stock, productos y categorías: GET `/products`, `/products/{id}`, `/products/low-stock`, `/products/{id}/lots`, `/categories`, `/categories/{id}`; POST `/products`, `/categories` |
+| Commercial | Compras y ventas: GET/POST `/purchases`, `/sales`; GET `/{id}` y POST `/{id}/confirm` en ambos recursos |
+| Operations | GET `/inventory-movements`, GET/POST `/wastes`, POST `/inventory-counts`, GET `/inventory-counts/{id}` |
+| Monitoring | Alertas y detalles: GET `/alerts`, `/alerts/{id}` |
+| Reporting | Dashboard y reportes reales: GET `/reports/sales-summary`, `/reports/top-products`; fechas `from`/`to` opcionales, límite del ranking 1–100 |
+
+Crear compras/ventas genera Draft sin alterar stock; confirmar es una acción independiente. El backend decide stock, lotes y FIFO. Las escrituras comerciales y de Operations no envían userId: la identidad procede del JWT. Una merma descuenta stock; un conteo conserva diferencias calculadas por backend sin ajuste automático. Se conservan validaciones y bloqueo de doble envío; no se reintentan POST automáticamente. Ante resultado incierto, revisar historial antes de repetir, incluso después de recargar.
+
+La interfaz conserva español, fechas `es-PE` en `America/Lima`, importes en soles y GUID completos para contratos y detalles, ocultos en tablas principales. No se inventan datos para listas vacías ni nombres de responsables no disponibles.
+
+Los servicios presentan errores 400 (datos), 401 (sesión), 403 (permisos), 404 (recurso), 409 (conflicto), 500 y conexión/CORS en español. Un fallo al refrescar después de confirmar se informa sin repetir la escritura.
+
+## Pruebas y compilación
 
 ```sh
+npm test
 npm run build
+npm audit
 git diff --check
 ```
 
-Antes de retirar las pruebas se ejecutaron las 20 existentes con éxito sobre fixtures y bases aisladas. Cubren login de ambos roles, permisos, productos, numeración, compras, ventas, carrito múltiple, stock, movimientos, mermas, alertas, reportes, traducciones, persistencia y errores parciales. Esta cobertura no sustituye una revisión visual interactiva.
+Las pruebas Node usan fixtures y adaptadores Axios mock; no necesitan backend ni ejecutan POST reales a MySQL. Cubren JWT, roles, rutas protegidas, servicios, contratos, operaciones y presentación, más configuración de producción. Para compilar es obligatorio proporcionar `VITE_API_BASE_URL` con el origen HTTPS real mediante el entorno o `.env.production.local` (ignorado). `npm run preview` permite revisar `dist` localmente; no es servidor de producción.
 
-Para la presentación, verificar manualmente dashboard, búsqueda y formularios, carrito, alertas, reportes y cambio español/inglés; revisar tamaños móvil y escritorio en Brave, Chrome, Edge y Firefox. Permitir almacenamiento local. Las reglas responsive existen, pero la validación visual en los cuatro navegadores y la ejecución real en macOS/Linux siguen pendientes.
+## Despliegue en Render Static Site
 
-## Configuración HTTP
+Después de revisar y fusionar el PR a `develop`:
 
-`VITE_API_BASE_URL` es la única variable HTTP del frontend. `.env.development` y `.env.example` apuntan a http://localhost:3001. Para otro backend, crear `.env.development.local` y reiniciar `npm run dev`; el backend debe permitir CORS desde http://localhost:5174 y respetar los contratos. Para producción puede configurarse `.env.production.local` antes del build. No se consume MockAPI.
+1. En Render elegir **New → Static Site** y conectar este repositorio.
+2. Seleccionar rama `develop`, raíz del repositorio, Build Command `npm ci && npm run build` y Publish Directory `dist`.
+3. Configurar `VITE_API_BASE_URL` con el origen HTTPS real del backend Docker en Render. Se recomienda `NODE_VERSION=24` para reproducir el entorno de Node. No configurar variables legacy ni secretos del backend.
+4. En Redirects/Rewrites agregar Source `/*`, Destination `/index.html`, Action **Rewrite**. Así las rutas internas llegan a Vue Router al recargar y sus guardas redirigen a login al perder la sesión en memoria.
+5. El equipo backend debe permitir el origen HTTPS exacto del Static Site mediante CORS, incluyendo `Authorization`, `Content-Type`, GET, POST y preflight OPTIONS. No se cambia el backend desde este repositorio.
+6. Desplegar y revisar HTTPS, login, roles, navegación y recarga de rutas internas. No ejecutar escrituras de prueba sobre datos reales sin autorización.
+
+No se necesita Docker ni un proceso Node para servir el frontend. Referencias: [Static Sites](https://render.com/docs/static-sites) y [rewrites de Render](https://render.com/docs/redirects-rewrites).
+
+## Legacy y limitaciones
+
+- `/users` es la única pantalla enrutada que sigue consumiendo JSON Server mediante `user-api.js`. En producción muestra una limitación explícita sin solicitudes ni tabla de usuarios demo; su migración a IAM real queda pendiente. La consulta real `/users` para resolver nombres de responsables es independiente y requiere permisos.
+- Los antiguos stores/servicios de productos, Commercial y Operations, y el componente QuickProduct no están conectados a las pantallas actuales. Se conservan por compatibilidad. Todo el cliente legacy rechaza solicitudes en producción, aunque se configure su variable.
+- Para desarrollo legacy únicamente: `npm run server` inicia JSON Server en 3001. `server/seed.json` es una semilla ficticia; `server/work-db.json` local se crea solo si falta y está ignorado. No usar credenciales ni datos reales. No es necesario para login ni módulos integrados.
+- Inventory no ofrece edición/borrado real; no se simula éxito. Conteos solo admite consulta por GUID, sin endpoint de listado. Alertas son de lectura; reportes no inventan series temporales ni métricas ausentes.
+- Las pruebas mock no sustituyen aceptación visual, CORS, login real y efectos de escrituras con el backend definitivo. El bundle puede superar el umbral recomendado de Vite.
+- Los registros identificables como desarrollo no autorizan su eliminación. Conservar historial, relaciones y stock; cualquier depuración de datos requiere una auditoría y autorización separadas.

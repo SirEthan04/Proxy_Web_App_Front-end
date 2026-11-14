@@ -1,4 +1,5 @@
 <script setup>
+import '../real-commercial.css'
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import Button from 'primevue/button'
@@ -7,12 +8,13 @@ import { t } from '../../../i18n.js'
 import AppLayout from '../../../shared/presentation/layouts/AppLayout.vue'
 import PageHeader from '../../../shared/presentation/components/PageHeader.vue'
 import CommercialConnection from './CommercialConnection.vue'
-import { connectionFeedback } from '../connection-feedback.js'
-import { useCommercialStore } from '../../application/commercial.js'
-import { isTerminal } from '../../domain/commercial-status.js'
+import { useCommercialStore } from '../../application/real-commercial.js'
+import { isTerminal, statusLabel } from '../../domain/backend-commercial.js'
 import { formatMoney, formatDate, businessDate, commercialReference } from '../format.js'
+import { useRecordLabels } from '../../../shared/presentation/utils/record-labels.js'
 const props = defineProps({ kind: { type: String, required: true } })
 const commercial = useCommercialStore(), router = useRouter()
+const labels = useRecordLabels()
 const search = ref(''), status = ref(''), from = ref(''), to = ref(''), connectionError = ref(null)
 const base = computed(() => props.kind === 'purchase' ? '/purchases' : '/sales')
 const invalidPeriod = computed(() => from.value && to.value && from.value > to.value)
@@ -24,17 +26,17 @@ const rows = computed(() => invalidPeriod.value ? [] : documents.value.filter(do
   const matchesStatus = !status.value || (status.value === 'pending' ? !isTerminal(document) : document.status === status.value)
   return matchesStatus && (!from.value || day && day >= from.value) && (!to.value || day && day <= to.value) && normalize([commercialReference(props.kind, document.id), document.id, ...document.lines.map(line => line.productName)].join(' ')).includes(normalize(search.value))
 }).sort((a,b) => String(b.createdAt).localeCompare(String(a.createdAt))))
-const completedTotal = computed(() => rows.value.filter(document => document.status === 'completed').reduce((sum, document) => sum + document.totalMinor, 0))
+const completedTotal = computed(() => rows.value.filter(document => document.status === 'Confirmed').reduce((sum, document) => sum + document.totalMinor, 0))
 async function load() {
   connectionError.value = null
-  try { await commercial.load(props.kind) } catch (error) { connectionError.value = connectionFeedback(error) }
+  try { await commercial.load(props.kind); await labels.loadRelated([]) } catch (error) { connectionError.value = error.message }
 }
 onMounted(load)
 function clear() { search.value = ''; status.value = ''; from.value = ''; to.value = '' }
 </script>
 <template>
   <AppLayout>
-    <div class="content">
+    <div class="content commercial-page">
       <PageHeader :title="t(kind === 'purchase' ? 'commercialPurchases' : 'commercialSales')" :description="t('posHistoryHint')">
         <template #actions>
           <Button class="cancel-btn" :disabled="commercial.loading || commercial.submitting" @click="load">{{ t('refreshData') }}</Button>
@@ -44,8 +46,8 @@ function clear() { search.value = ''; status.value = ''; from.value = ''; to.val
       <p v-if="!commercial.loading && !commercial.loadError && !connectionError" class="results-summary">{{ t('completedCommercialTotal') }}: {{ formatMoney(completedTotal) }}</p>
       <CommercialConnection :loading="commercial.loading" :error="connectionError || commercial.loadError" @retry="load" />
       <div v-if="pendingCount && !commercial.loading && !commercial.loadError" class="review-warning pos-pending-banner" role="status">
-        <p>{{ t('posPendingCount', { count: pendingCount }) }}</p>
-        <Button type="button" severity="secondary" outlined @click="status = 'pending'">{{ t('posShowPending') }}</Button>
+        <p>{{ pendingCount }} borradores pendientes de confirmar.</p>
+        <Button type="button" severity="secondary" outlined @click="status = 'pending'">Ver borradores</Button>
       </div>
       <section class="panel pos-history-filters">
         <div class="field">
@@ -60,8 +62,8 @@ function clear() { search.value = ''; status.value = ''; from.value = ''; to.val
               <label for="commercial-status">{{ t('status') }}</label>
               <select id="commercial-status" v-model="status">
                 <option value="">{{ t('commercialAllStates') }}</option>
-                <option value="pending">{{ t('posNeedsReview') }}</option>
-                <option v-for="value in ['completed', 'failed']" :key="value" :value="value">{{ t('commercialState_' + value) }}</option>
+                <option value="pending">Borradores</option>
+                <option v-for="value in ['Draft', 'Confirmed', 'Cancelled']" :key="value" :value="value">{{ statusLabel(value) }}</option>
               </select>
             </div>
             <div class="field">
@@ -85,6 +87,7 @@ function clear() { search.value = ''; status.value = ''; from.value = ''; to.val
               <tr>
                 <th>{{ t('posReference') }}</th>
                 <th>{{ t('date') }}</th>
+                <th>Responsable</th>
                 <th>{{ t('commercialDistinctProducts') }}</th>
                 <th>{{ t('commercialTotal') }}</th>
                 <th>{{ t('status') }}</th>
@@ -95,18 +98,18 @@ function clear() { search.value = ''; status.value = ''; from.value = ''; to.val
               <tr v-for="document in rows" :key="document.id">
                 <td>{{ commercialReference(kind, document.id) }}</td>
                 <td>{{ formatDate(document.createdAt) }}</td>
+                <td>{{ labels.responsible(document.userId) }}</td>
                 <td>{{ document.lines.length }}</td>
                 <td class="pos-history-total">{{ formatMoney(document.totalMinor) }}</td>
                 <td>
-                  <span class="status-pill" :class="{ 'status-danger': !isTerminal(document) }">{{ t('commercialState_' + document.status) }}</span>
-                  <small v-if="document.localOnly" class="cell-secondary">{{ t('posLocalTracking') }}</small>
+                  <span class="status-pill" :class="{ 'status-danger': !isTerminal(document) }">{{ statusLabel(document.status) }}</span>
                 </td>
                 <td>
                   <router-link class="inline-action" :to="base + '/' + document.id">{{ t('posViewDetails') }}</router-link>
                 </td>
               </tr>
               <tr v-if="!rows.length">
-                <td colspan="6" class="empty">{{ t(documents.length ? 'commercialNoMatches' : 'commercialNoDocuments') }}</td>
+                <td colspan="7" class="empty">{{ t(documents.length ? 'commercialNoMatches' : 'commercialNoDocuments') }}</td>
               </tr>
             </tbody>
           </table>
@@ -118,8 +121,7 @@ function clear() { search.value = ''; status.value = ''; from.value = ''; to.val
               <strong class="pos-history-total">{{ formatMoney(document.totalMinor) }}</strong>
             </div>
             <p>{{ formatDate(document.createdAt) }} &#183; {{ t('posCartCount', { products: document.lines.length }) }}</p>
-            <span class="status-pill" :class="{ 'status-danger': !isTerminal(document) }">{{ t('commercialState_' + document.status) }}</span>
-            <small v-if="document.localOnly" class="cell-secondary">{{ t('posLocalTracking') }}</small>
+            <span class="status-pill" :class="{ 'status-danger': !isTerminal(document) }">{{ statusLabel(document.status) }}</span>
             <router-link class="inline-action" :to="base + '/' + document.id">{{ t('posViewDetails') }}</router-link>
           </article>
           <p v-if="!rows.length" class="panel empty">{{ t(documents.length ? 'commercialNoMatches' : 'commercialNoDocuments') }}</p>
